@@ -21,7 +21,7 @@ mutable struct Properties{df<:DataFrame, scen<:String, itv<:String, t_p<:Int64, 
     tick::tick
 end
 
-function Simulator(;df = copy(bg_df), initial_vacancy = 0.20,
+function Simulator(;df = copy(default_df), initial_vacancy = 0.20,
     scenario = "Baseline",intervention = "Baseline",start_year = 2018, no_of_years = 10, no_hhs_per_agent=10, 
     simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33,
     hh_size = 2.7, pop_growth_mode = "perc" , pop_growth_perc = .01, 

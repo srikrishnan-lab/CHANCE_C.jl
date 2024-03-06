@@ -13,18 +13,24 @@ A dataframe of Block Group attributes must first be created in order to calculat
 ## Repository Structure
 
 * `data/` contains all raw data inputs. Folder currently empty for this model version.
-* `src/` stores the required julia files necessary to run the model. This includes `agents_struct.jl` which defines the agent types, `model_intitialization.jl` that defines the ABM initialization function, and the folders  `agent_functions/` and `model_functions/` which hold functions to evolve agents and the model over time.
+* `src/` stores the required julia files necessary to run the model. This includes `agents_struct.jl` which defines the agent types, `model_intitialization.jl` that defines the ABM initialization function, and the folders  `agent_functions/` and `model_functions/` which hold functions to evolve agents and the model over time. `CHANCE_C.jl` holds the module that exports theses relevant functions. 
 * `test/` contains scripts for example model runs and unit test cases for the model evolution. `abm_baltimore_example.jl` provides example code to initialize and evolve one model instance, as well as visualize model results. `figure_recreation.jl` provides code to recreate the sensitivity analysis conducted on structural model parameters from [Yoon et al., 2023](https://doi.org/10.1016/j.compenvurbsys.2023.101979).
 
 ## Installation
 
-### Setting up Julia Project
+### Software Requirements
 
-It is best practice to set up a julia project environment prior to running the model. Setting up the environment will also install the packages necessary to run the scripts present in this repository. For an explanation on the julia project environment and accessing the Pkg Repl in Julia, read the [Package docs](https://pkgdocs.julialang.org/v1/getting-started/). In summary, after cloning this repository to your device, access the Pkg REPL from the **parent directory** of your cloned repository folder location and execute the following command:
+You need to install [Julia 1.7.0](https://julialang.org/) or newer to run this model. Download Julia from https://julialang.org/downloads/ 
 
-`activate chance-c-julia`
+### Installing CHANCE_C
 
-Julia should activate the existing environment from the `Project.toml` file, rather than creating a new environment. To install all necessary dependencies with the correct versions from the `Manifest.toml` file, run `instantiate` in the Pkg REPL.
+To install CHANCE_C.jl, access the Pkg REPL  and execute the following command:
+
+```julia-repl
+pkg> add https://github.com/srikrishnan-lab/CHANCE_C.jl
+```
+
+Note: It is best practice to set up a julia project environment prior to installing this package and running the model. For an explanation on the julia project environment and accessing the Pkg Repl in Julia, read the [Package docs](https://pkgdocs.julialang.org/v1/getting-started/).
 
 ## Getting Started
 
@@ -36,7 +42,7 @@ A CHANCE-C model instance is initialized using the `Simulator()` function define
 
 * `df`: a Block Group dataframe input to create the BlockGroup and HHAgent agents. The block group dataframe is also saved as a model property (`model.df`). By default, the `bg_baltimore` dataframe is automatically inputted here. To use block groups in a different location, input a different dataframe for this argument, or change the path pointer to its csv file under `src/model_initialization.jl`.
 * `no_of_years:` number of years that the model will be evolved for. Used to create the size of the vector for the BlockGroup attribute `demand_exceeds_supply`.
-* `house_choice_mode`: Defines how agent utilities are calculated. Decides which structural variant to use for model evolution. 
+* `house_choice_mode`: Defines how agent utilities are calculated. Decides which structural variant to use for model evolution.
 
 Structural variants of CHANCE-C must be declared upon model initialization. To select a structural variant and declare its associated parameter value, refer to the following table:
 

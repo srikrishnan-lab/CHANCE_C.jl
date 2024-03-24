@@ -8,9 +8,23 @@ using Random
 
 export 
     Simulator,
+    BlockGroup,
+    HHAgent,
+    Queue,
+    default_df,
     agent_step!,
     block_step!,
-    model_step!
+    model_step!,
+    step!,
+    dummystep,
+    run!,
+    ensemblerun!
+    #ExistingAgentResampler,
+    #AgentLocation,
+    #HousingMarket,
+    #BuildingDevelopment,
+    #HousingPricing,
+    #LandscapeStatistics
 
 include("core/model_initialization.jl")
 include("core/model_evolution.jl")

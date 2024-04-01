@@ -1,4 +1,4 @@
-include("../src/model_initialization.jl")
+using .CHANCE_C
 
 ## Set input parameters 
 scenario = "Baseline"
@@ -31,7 +31,7 @@ housing_pricing_mode = "simple_perc"
 price_increase_perc = .05
 
 ### Intialize Model ###
-balt_abm = Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years)
+balt_abm = CHANCE_C.Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years)
 
 ### Define Model evolution ###
 
@@ -102,17 +102,17 @@ function model_step!(model::ABM)
 end
 
 ### Evolve model ###
-step!(balt_abm,dummystep,model_step!,no_of_years)
+step!(balt_abm,dummystep,CHANCE_C.model_step!,no_of_years)
 
 ### Collect data during model evolution ###
 include("../src/data_collect.jl")
 #Note: will need to re-initiate model to run
-balt_abm = Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years)
+balt_abm = CHANCE_C.Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years)
 
 adata = [(:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
 #mdata = 
 
 #run model
-adf, _ = run!(balt_abm, dummystep, model_step!, 10; adata)
+adf, _ = run!(balt_abm, dummystep, CHANCE_C.model_step!, 10; adata)
 
 

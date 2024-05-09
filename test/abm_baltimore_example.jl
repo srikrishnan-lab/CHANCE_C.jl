@@ -1,10 +1,16 @@
-using .CHANCE_C
+import Pkg
+Pkg.activate(dirname(@__DIR__))
+Pkg.instantiate()
 
-## Set input parameters 
-scenario = "Baseline"
-intervention = "Baseline"
-start_year = 2018
-no_of_years = 50
+include(joinpath(dirname(@__DIR__), "src/CHANCE_C.jl"))
+using .CHANCE_C #add period since module is local to repository
+using CSV, DataFrames
+
+
+
+## Load input Data
+balt_base = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-housing-data/model_inputs/surge_area_baltimore_base.csv")))
+balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-housing-data/model_inputs/surge_area_baltimore_levee.csv")))
 
 #List of kwargs for model properties. Variables below give the argument decription and default values.
 #Changing arguments requires declaring them as inputs in the initialization function
@@ -31,18 +37,30 @@ housing_pricing_mode = "simple_perc"
 price_increase_perc = .05
 
 ### Intialize Model ###
-balt_abm = CHANCE_C.Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years)
+#Define relevant parameters
+scenario = "Baseline"
+intervention = "Baseline"
+start_year = 2018
+no_of_years = 10
+perc_move = 0.025
+house_choice_mode = "flood_mem_utility"
+levee = false
+breach = true 
+breach_null = 0.45 
+risk_averse = 0.3 
+flood_mem = 10 
+fixed_effect = 0
+
+
+balt_abm = CHANCE_C.Simulator(default_df, balt_base, balt_levee; scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
+perc_move = perc_move, house_choice_mode = house_choice_mode, levee = levee, breach = breach, breach_null = breach_null, risk_averse = risk_averse, flood_mem = flood_mem, fixed_effect = fixed_effect)
 
 ### Define Model evolution ###
-
-#Import model/agent step functions
-#Import model step function
-include("../src/model_evolution.jl")
-
 """
 Order of evolution:
 AgentCreation
-AgentReloSampler
+Flooded
+agent_prob
 AgentLocation
 HousingMarket
 BuildingDevelopment
@@ -50,62 +68,13 @@ HousingPricing
 (bg update function [for avg income])
 LandscapeStatistics
 """
-## The model step function and its components are recreated here for illustration purposes.
-## For a typical workflow, the model step function can be declared by reading in model_evolution.jl in an `include()` statement
-
-#Define agent steps
-function agent_step!(agent::HHAgent, model::ABM)
-    #Do nothing  
-end
- 
-function agent_step!(agent::BlockGroup, model::ABM)
-    ExistingAgentResampler(agent, model; model.relo_sampler...)
-end
- 
-function agent_step!(agent::Queue, model::ABM)
-    AgentLocation(agent, model; model.agent_relocate...)
-end
- 
-function block_step!(agent::BlockGroup, model::ABM)
-    BuildingDevelopment(agent, model; model.build_develop...)
-    HousingPricing(agent, model; model.house_price...)
-end
- 
-#Define model evolution
-function model_step!(model::ABM)
-    #Update Year
-    model.tick += 1
-    #clear utilities df
-    empty!(model.hh_utilities_df)
-    #create new agents
-    NewAgentCreation(model; model.agent_creation...)
-    #Determine relocating HHAgents and potential moving locations
-    for id in Agents.schedule(model)
-        agent_step!(model[id],model)
-    end
- 
-    #run Housing Market to move HHAgents to desired locations
-    HousingMarket(model)
- 
-    #Update BlockGroup conditions
-    for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
-        block_step!(model[id], model)
-        try
-            model[id].avg_hh_income = mean([a.income for a in agents_in_position(model[id].pos, model) if a isa HHAgent])
-        catch  #if not incomes_bg:  # i.e. no households reside in block group
-            model[id].avg_hh_income = NaN
-        end
-         
-    end
-    LandscapeStatistics(model)
-    model.total_population = sum([a.population for a in allagents(model) if a isa BlockGroup])
-end
 
 ### Evolve model ###
 step!(balt_abm,dummystep,CHANCE_C.model_step!,no_of_years)
 
 ### Collect data during model evolution ###
-include("../src/data_collect.jl")
+include(joinpath(dirname(@__DIR__), "src/data_collect.jl"))
+
 #Note: will need to re-initiate model to run
 balt_abm = CHANCE_C.Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years)
 

@@ -70,45 +70,41 @@ Plots.ylabel!("% Change in Population")
 #create subplot
 averse_results = Plots.plot(surge_base, pop_avoidance, layout = (2,1), dpi = 300, size = (500,600))
 
-
-
-
-
-### For Levee Scenario ### 
-
-## For Risk Aversion
-ra_params = [0.3 0.7]
-
-levee_abms = [Simulator(default_df, balt_base, balt_levee; scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
-pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coefficient, levee = true, breach = breach, breach_null = breach_null, risk_averse = i,
+## Include SLR
+slr_abms = [Simulator(default_df, balt_base, balt_levee; slr = true, slr_scen = [3.03e-3,7.878e-3,2.3e-2], scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
+pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coefficient, levee = false, breach = breach, breach_null = breach_null, risk_averse = i,
  flood_mem = flood_mem, fixed_effect = fixed_effect) for i in ra_params]
 
-adata = [(:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
+adata = [(:flood_hazard, sum, BG), (:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
 mdata = [flood_scenario, flood_record]
 
-adf_levee, mdf_levee = ensemblerun!(levee_abms, dummystep, CHANCE_C.model_step!, no_of_years; adata, mdata)
+adf_slr, mdf_slr = ensemblerun!(slr_abms, dummystep, CHANCE_C.model_step!, no_of_years; adata, mdata)
+
 
 #Plot results
 #surge level
-surge_levee = Plots.plot(mdf_levee.step[2:51], mdf_levee.flood_record[2:51], linecolor = :black, lw = 4)
-flood_pop_change = 100 .* (adf_levee.sum_population_f_bgs .- adf_levee.sum_pop90_f_bgs) ./ adf_levee.sum_pop90_f_bgs
-nf_pop_change = 100 .* (adf_levee.sum_population_nf_bgs .- adf_levee.sum_pop90_nf_bgs) ./ adf_levee.sum_pop90_nf_bgs
-Plots.title!("Levee")
+surge_base_slr = Plots.plot(mdf_slr.step[2:51], mdf_slr.flood_record[2:51], linecolor = :black, lw = 4)
+Plots.title!("Baseline with SLR")
 
+#Cumulative remembered flood density at each time step
+flood_dense_slr = Plots.plot(adf_slr.step[2:51], adf_slr.sum_flood_hazard_BG[2:51], linecolor = :blue, lw = 3)
+
+#Pop Change
 avoid_col = cgrad(:redsblues, 2, categorical = true)
-pop_avoid_levee = Plots.plot(adf_levee.step, nf_pop_change, group = adf_levee.ensemble,
+flood_pop_change = 100 .* (adf_slr.sum_population_f_bgs .- adf_slr.sum_pop90_f_bgs) ./ adf_slr.sum_pop90_f_bgs
+nf_pop_change = 100 .* (adf_slr.sum_population_nf_bgs .- adf_slr.sum_pop90_nf_bgs) ./ adf_slr.sum_pop90_nf_bgs
+
+pop_avoidance_slr = Plots.plot(adf_slr.step, nf_pop_change, group = adf_slr.ensemble,
  linecolor = [avoid_col[1] avoid_col[2]], ls = :solid,
   label = ra_params, lw = 2.5)
 
-Plots.plot!(adf_levee.step, flood_pop_change, group = adf_levee.ensemble, 
-linecolor = [avoid_col[1] avoid_col[2]], ls = :dash, 
-label = false, lw = 2.5)
+Plots.plot!(adf_avoid.step, flood_pop_change, group = adf_avoid.ensemble, 
+linecolor = [avoid_col[1] avoid_col[2]], ls = :dash,
+ label = false, lw = 2.5)
 
 Plots.ylims!(-10,100)
 Plots.xlabel!("Model Year")
 Plots.ylabel!("% Change in Population")
 
 #create subplot
-levee_results = Plots.plot(surge_levee, pop_avoid_levee, layout = (2,1), dpi = 300, size = (500,600))
-
-
+averse_results = Plots.plot(surge_base_slr, flood_dense_slr, pop_avoidance_slr, layout = (3,1), dpi = 300, size = (500,600))

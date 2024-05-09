@@ -1,11 +1,12 @@
 
-#bg_df_geo = GDF.read(joinpath(filepath,filename))
 
-#import Agent Types and Functions
+#import Agent Types and Flood Dynamics Functions
 include("agent_structs.jl")
+include("flood_dynamics.jl")
+
 
 mutable struct Properties{df<:DataFrame, scen<:String, itv<:String, t_p<:Int64, a_c<:Dict, r_s<:Dict, a_r<:Dict, b_d<:Dict,
-     h_p<:Dict, u_hhs<:DataFrame, sy<:Int64, no_y<:Int64, tick<:Int64}
+     h_p<:Dict, u_hhs<:DataFrame, sy<:Int64, no_y<:Int64, f_mat<:Array, f_dict<:Dict, tick<:Int64}
     df::df
     scenario::scen
     intervention::itv
@@ -18,26 +19,33 @@ mutable struct Properties{df<:DataFrame, scen<:String, itv<:String, t_p<:Int64, 
     hh_utilities_df::u_hhs
     start_year::sy
     no_of_years::no_y
+    #Additional properties for Flood Dynamics
+    flood_matrix::f_mat
+    flood_dict::f_dict
     tick::tick
 end
 
-function Simulator(;df = copy(default_df), initial_vacancy = 0.20,
-    scenario = "Baseline",intervention = "Baseline",start_year = 2018, no_of_years = 10, no_hhs_per_agent=10, 
-    simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33,
+function Simulator(bg_df, base_df, levee_df; slr = false, slr_scen = [3.03e-3,7.878e-3,2.3e-2], initial_vacancy = 0.20, 
+    scenario = "Baseline",intervention = "Baseline",start_year = 2018, no_of_years = 10, 
+    no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33,
     hh_size = 2.7, pop_growth_mode = "perc" , pop_growth_perc = .01, 
     inc_growth_mode = "random_agent_replication", pop_growth_inc_perc = .90, inc_growth_perc = .05, 
-    bld_growth_perc = .01, perc_move = .10, perc_move_mode = "random", house_choice_mode = "simple_avoidance_utility", 
+    bld_growth_perc = .01, perc_move = 0.025, perc_move_mode = "random", house_choice_mode = "simple_avoidance_utility", 
     simple_anova_coefficients = [-121428, 294707, 130553, 128990, 154887], flood_coefficient = -500000, budget_reduction_perc = .90,
     stock_increase_mode = "simple_perc",  stock_increase_perc = .05,  housing_pricing_mode = "simple_perc", price_increase_perc = .05,
-    seed = 1500,
-
+    levee = false, breach = true, breach_null = 0.45, risk_averse = 0.3, flood_mem = 10, fixed_effect = 0, seed = 1500,
 )
+
+    flood_rng = MersenneTwister(seed)
+    f_matrix, f_dict = initialize_flood(flood_rng, base_df, levee_df; no_of_years = no_of_years, slr = slr, slr_scenarios = slr_scen, levee = levee, 
+    breach = breach, breach_null = breach_null, gev_d = default_gev)
+
 ##Input Updating##
     #Replace missing hhsize values with median hhsize values
-    med_hh = median(skipmissing(df.hhsize1990))
-    df[!, "hhsize1990"] = coalesce.(df.hhsize1990, med_hh)
+    med_hh = median(skipmissing(bg_df.hhsize1990))
+    bg_df[!, "hhsize1990"] = coalesce.(bg_df.hhsize1990, med_hh)
     #Replace missing values in df with 0.0
-    new_df = coalesce.(df, 0.0)
+    new_df = coalesce.(bg_df, 0.0)
 
 
     ##Create Keyword Arguments for step function parameters
@@ -47,7 +55,7 @@ function Simulator(;df = copy(default_df), initial_vacancy = 0.20,
      :hh_budget_perc => hh_budget_perc)
 
     #Agent relocation
-    relo_sampler = Dict(:perc_move => perc_move)
+    averse_move = Dict(:levee => levee, :risk_averse => risk_averse, :mem => flood_mem, :base_prob => perc_move, :f_e => fixed_effect)
     agent_relocate = Dict(:house_choice_mode => house_choice_mode, :bg_sample_size => no_hhs_per_agent, :budget_reduction_perc => budget_reduction_perc,
      :a_c => simple_anova_coefficients, :f_c => flood_coefficient)
 
@@ -60,8 +68,8 @@ function Simulator(;df = copy(default_df), initial_vacancy = 0.20,
     #Set space for model
     space = GridSpace((35,35))
 
-    parameters = Properties(new_df, scenario, intervention, 0, agent_creation, relo_sampler, agent_relocate, build_develop, house_price,
-     DataFrame(hh_id = Int64[], bg_id = Int64[], bg_utility = Float64[]), start_year, no_of_years, 0)
+    parameters = Properties(new_df, scenario, intervention, 0, agent_creation, averse_move, agent_relocate, build_develop, house_price,
+     DataFrame(hh_id = Int64[], bg_id = Int64[], bg_utility = Float64[]), start_year, no_of_years, f_matrix, f_dict, 0)
 
     model = ABM(
         Union{BlockGroup,HHAgent,Queue},
@@ -83,6 +91,9 @@ function Simulator(;df = copy(default_df), initial_vacancy = 0.20,
     pop_density = Float64[], occupied_units = Int64[], available_units = Int64[], demand_exceeds_supply = Bool[])
 
     for bg in collect(allagents(model))
+        #Assign BG flood area value based on 100 year event (7th column of matrix is 100 yr event)
+        bg.perc_fld_area = model.flood_matrix[bg.id,7,1]
+        
         if bg.hhsize90 != 0.0 && isfinite(bg.hhsize90)
             no_of_hhs = round(bg.pop90 / bg.hhsize90)
             no_of_agents = fld(fld(no_of_hhs + no_hhs_per_agent, 2), no_hhs_per_agent) #division with rounding to nearest integer
@@ -111,7 +122,7 @@ function Simulator(;df = copy(default_df), initial_vacancy = 0.20,
         for a in 1:no_of_agents
             # indicate whether agent avoids flood zone (used in "simple avoidance utility" model)
             agent_avoid = rand(model.rng,Uniform(0,1)) <= simple_avoidance_perc ? true : false
-            
+
             #Add agent to model
             add_agent_pos!(HHAgent(nextid(model), bg.pos, bg.id, no_hhs_per_agent, Int(round(bg.hhsize90)), 
             Float64(bg.mhi90), house_budget_mode, model.start_year, simple_avoidance_perc, agent_avoid, budget, hh_budget_perc), model)

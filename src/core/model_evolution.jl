@@ -13,7 +13,8 @@ function agent_step!(agent::HHAgent, model::ABM)
 end
  
 function agent_step!(agent::BlockGroup, model::ABM)
-    ExistingAgentResampler(agent, model; model.relo_sampler...)
+    flooded!(agent, model; mem = model.relo_sampler[:mem])
+    agent_prob!(agent, model; model.relo_sampler...)
 end
  
 function agent_step!(agent::Queue, model::ABM)

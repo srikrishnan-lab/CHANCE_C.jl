@@ -42,7 +42,7 @@ mutable struct BlockGroup <: AbstractAgent
     salespricesf93::Float64
 
     population::Int64
-    flood_hazard_risk::Int64
+    flood_hazard::Float64
     levee_protections::String #(yes or no)
     new_price::Float64
     years_since_major_flooding::Int64
@@ -61,7 +61,7 @@ function add_bg(row, no_of_years)
 
     new_bg = BlockGroup(Int(row.fid_1),(0,0),row.COUNTYFP, row.TRACTCE,
     row.BLKGRPCE,row.ALAND, 
-    row.AJWME001, row.perc_fld_area,
+    row.AJWME001, 0,
     row.pop1990, row.mhi1990, row.hhsize1990,
     row.coastdist, row.cbddist, row.hhtrans1993,
     row.salesprice1993, row.salespricesf1993,

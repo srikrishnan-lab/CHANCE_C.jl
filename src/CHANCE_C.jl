@@ -5,6 +5,7 @@ using CSV, Tables
 using DataFrames
 using Statistics,StatsBase,Distributions
 using Random
+using Extremes
 
 export 
     Simulator,
@@ -12,6 +13,7 @@ export
     HHAgent,
     Queue,
     default_df,
+    default_gev,
     agent_step!,
     block_step!,
     model_step!,

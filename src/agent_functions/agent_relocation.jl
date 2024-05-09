@@ -17,13 +17,63 @@ function ExistingAgentResampler(agent::BlockGroup, model::ABM; perc_move = 0.10)
     agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
 end
 
-function calc_utility(row, house_choice_mode; cd_dict = Dict(:a=>0.4,:b=>0.4,:c=>0.2), anova_coef = [-121428, 294707, 130553, 128990, 154887], flood_coef = -500000)
+function agent_prob!(agent::BlockGroup, model::ABM; levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
+    """Function determines probability of agent action
+    using a risk aversion function.
+    Output updates agent's action property""" 
+    ### Calculate logistic Probability ###
+   
+    #Fixed effect: define scaling factor depending on levee presence
+    scale_factor = levee ? 0.1 : 0.1 - f_e
+    #Calculate flood probability based on risk averse value
+    if agent.flood_hazard == 0
+        flood_prob = base_prob
+    elseif risk_averse == 0
+        #flood_prob = 1/(1+ exp(-20((sum(model[calc_house].flood[time_back])/mem) - 0.1)))
+        flood_prob = 1/(1+ exp(-20((agent.flood_hazard/mem) - 0.1)))  + base_prob
+    elseif risk_averse == 1
+        flood_prob = 0
+    else
+        #flood_prob = 1/(1+ exp(-10((sum(model[calc_house].flood[time_back])/mem) - model.risk_averse)))
+        flood_prob = 1/(1+ exp(-((agent.flood_hazard/mem) - risk_averse)/scale_factor)) + base_prob
+    end
+     
+    move_prob = flood_prob <= 1.0 ? flood_prob : 1
+    
+    ### Move triggered agents to Queue ###
+
+    bg_agents = [a for a in agents_in_position(agent, model) if a isa HHAgent]
+    agents_moving = bg_agents[Bool.(rand(model.rng, Binomial(1,move_prob),length(bg_agents)))] #HHAgents moving from BlockGroup
+    no_of_agents_moving = length(agents_moving)
+
+    if no_of_agents_moving < 1
+    #not enough agents
+        return
+    end
+
+    #Update BG id property for moving agents
+    setproperty!.(agents_moving, :bg_id, 0)
+    #Move agents to relocating Queue
+    move_agent!.(agents_moving, Ref(model[0].pos), Ref(model))
+    #Update occupied and available_units bg properties
+    agent.occupied_units -= no_of_agents_moving
+    agent.available_units += no_of_agents_moving
+    
+    agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
+    
+end
+
+function calc_utility(row, house_choice_mode, model::ABM; cd_dict = Dict(:a=>0.4,:b=>0.4,:c=>0.2), anova_coef = [-121428, 294707, 130553, 128990, 154887], flood_coef = -500000)
     if house_choice_mode == "cobb_douglas_utility"
         util = row.average_income_norm ^ cd_dict[:a] * row.prox_cbd_norm ^ cd_dict[:b] * row.flood_risk_norm ^ cd_dict[:c]
 
     elseif house_choice_mode == "simple_flood_utility"
         util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
         (anova_coef[5] * row.N_MeanFullBathNumber) + (flood_coef * row.perc_fld_area) + (1 * row.residuals)
+        
+    elseif house_choice_mode == "flood_mem_utility"
+        util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
+        (anova_coef[5] * row.N_MeanFullBathNumber) + (flood_coef * (model[Int(row.fid_1)].flood_hazard/model.relo_sampler[:mem])) + (1 * row.residuals)
 
     else #house_choice_mode == "simple_anova_utility" or house_choice_mode == "budget_reduction" or house_choice_mode == "simple_avoidance_utility"
         util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
@@ -66,7 +116,7 @@ function AgentLocation(agent::Queue, model::ABM; bg_sample_size = 10, house_choi
             weights = ProbabilityWeights(bg_budget.available_units ./ sum(bg_budget.available_units))
             bg_options = bg_budget[sample(model.rng, 1:nrow(bg_budget), weights, 10; replace = true), :] 
             #Calculate utility of options for household agents
-            bg_utilities = calc_utility.(eachrow(bg_options), house_choice_mode; anova_coef = a_c, flood_coef = f_c) #Figure out most efficient way to calculate. Maybe just read in entire dataframe instead of iterating over rows
+            bg_utilities = calc_utility.(eachrow(bg_options), house_choice_mode, Ref(model); anova_coef = a_c, flood_coef = f_c) #Figure out most efficient way to calculate. Maybe just read in entire dataframe instead of iterating over rows
             #push to bg_sample dataframe
             append!(bg_sample.hh_id,repeat([hh_agent.id],bg_sample_size))
             append!(bg_sample.bg_id, bg_options.fid_1)

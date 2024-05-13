@@ -28,6 +28,9 @@ export
     #HousingPricing,
     #LandscapeStatistics
 
+#import Agent Types and Flood Dynamics Functions
+include("core/agent_structs.jl")
+include("core/flood_dynamics.jl")
 include("core/model_initialization.jl")
 include("core/model_evolution.jl")
 

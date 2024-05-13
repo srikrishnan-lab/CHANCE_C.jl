@@ -1,4 +1,6 @@
 ### Create GEV from Baltimore Tide data
+using Extremes, Distributions
+
 #Load Tidal Data
 dat_annmax = DataFrame(CSV.File(joinpath(@__DIR__,"balt_tide.csv")))
 #Find Parameters

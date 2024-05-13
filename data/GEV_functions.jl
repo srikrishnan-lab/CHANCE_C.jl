@@ -4,9 +4,9 @@ dat_annmax = DataFrame(CSV.File(joinpath(@__DIR__,"balt_tide.csv")))
 #Find Parameters
 fm = gevfit(dat_annmax, :residual)
  
-μ = location(fm)[1]
+μ = Extremes.location(fm)[1]
 σ = Extremes.scale(fm)[1]
-ξ = shape(fm)[1]
+ξ = Extremes.shape(fm)[1]
 
 #Create GEV distribution
 default_gev = GeneralizedExtremeValue(μ, σ, ξ)

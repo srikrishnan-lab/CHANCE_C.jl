@@ -36,8 +36,8 @@ avoid_abms = [Simulator(default_df, balt_base, balt_levee; scenario = scenario, 
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coefficient, levee = false, breach = breach, breach_null = breach_null, risk_averse = i,
  flood_mem = flood_mem, fixed_effect = fixed_effect) for i in ra_params]
 
-adata = [(:flood_hazard, sum, BG),(:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
-mdata = [flood_scenario, flood_record]
+adata = [(:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
+mdata = [flood_scenario, flood_record, total_fld_area]
 
 adf_avoid, mdf_avoid = ensemblerun!(avoid_abms, dummystep, CHANCE_C.model_step!, no_of_years; adata, mdata)
 
@@ -48,7 +48,8 @@ surge_base = Plots.plot(mdf_avoid.step[2:51], mdf_avoid.flood_record[2:51], line
 Plots.title!("Baseline")
 
 #Cumulative remembered flood density at each time step
-flood_dense = Plots.plot(adf_avoid.step[2:51], adf_avoid.flood_hazard[2:51], linecolor = :blue, lw = 3)
+flood_dense = Plots.plot(mdf_avoid.step[2:51], mdf_avoid.total_fld_area[2:51], linecolor = :blue, lw = 3)
+Plots.ylims!(0,30)
 
 #Pop Change
 avoid_col = cgrad(:redsblues, 2, categorical = true)
@@ -68,7 +69,7 @@ Plots.xlabel!("Model Year")
 Plots.ylabel!("% Change in Population")
 
 #create subplot
-averse_results = Plots.plot(surge_base, pop_avoidance, layout = (2,1), dpi = 300, size = (500,600))
+averse_results = Plots.plot(surge_base, flood_dense, pop_avoidance, layout = (3,1), dpi = 300, size = (500,600))
 
 
 
@@ -83,8 +84,8 @@ levee_abms = [Simulator(default_df, balt_base, balt_levee; scenario = scenario, 
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coefficient, levee = true, breach = breach, breach_null = breach_null, risk_averse = i,
  flood_mem = flood_mem, fixed_effect = fixed_effect) for i in ra_params]
 
-adata = [(:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
-mdata = [flood_scenario, flood_record]
+adata = [(:flood_hazard, sum, BG), (:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
+mdata = [flood_scenario, flood_record, total_fld_area]
 
 adf_levee, mdf_levee = ensemblerun!(levee_abms, dummystep, CHANCE_C.model_step!, no_of_years; adata, mdata)
 
@@ -95,6 +96,10 @@ flood_pop_change = 100 .* (adf_levee.sum_population_f_bgs .- adf_levee.sum_pop90
 nf_pop_change = 100 .* (adf_levee.sum_population_nf_bgs .- adf_levee.sum_pop90_nf_bgs) ./ adf_levee.sum_pop90_nf_bgs
 Plots.title!("Levee")
 
+#Cumulative remembered flood density at each time step
+flood_dense_levee = Plots.plot(mdf_levee.step[2:51], mdf_levee.total_fld_area[2:51], linecolor = :blue, lw = 3)
+Plots.ylims!(0,30)
+#Population change
 avoid_col = cgrad(:redsblues, 2, categorical = true)
 pop_avoid_levee = Plots.plot(adf_levee.step, nf_pop_change, group = adf_levee.ensemble,
  linecolor = [avoid_col[1] avoid_col[2]], ls = :solid,
@@ -109,6 +114,6 @@ Plots.xlabel!("Model Year")
 Plots.ylabel!("% Change in Population")
 
 #create subplot
-levee_results = Plots.plot(surge_levee, pop_avoid_levee, layout = (2,1), dpi = 300, size = (500,600))
+levee_results = Plots.plot(surge_levee, flood_dense_levee, pop_avoid_levee, layout = (3,1), dpi = 300, size = (500,600))
 
 

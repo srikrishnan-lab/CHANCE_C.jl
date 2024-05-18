@@ -19,3 +19,6 @@ pop_change(agent) = (agent.population - agent.pop90) / agent.pop90
 
 #get income
 bg_inc(agent) = sum([a.income for a in agents_in_position(agent, model) if a isa HHAgent])
+
+#get average house price 
+avg_price(agent) = agent.new_price * agent.population

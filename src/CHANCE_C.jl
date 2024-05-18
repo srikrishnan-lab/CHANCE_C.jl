@@ -20,8 +20,10 @@ export
     step!,
     dummystep,
     run!,
-    ensemblerun!
-    #ExistingAgentResampler,
+    ensemblerun!,
+    levee_breach,
+    m_to_ft,
+    breach_occur
     #AgentLocation,
     #HousingMarket,
     #BuildingDevelopment,

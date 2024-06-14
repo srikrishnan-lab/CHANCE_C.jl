@@ -93,11 +93,11 @@ function initialize_flood(model_rng, base_df, levee_df; no_of_years = 10, slr = 
 ## Create Matrix of surge from base and levee scenario ##
     #Sort on fid_1 column. Extract only flood area values
     sort!(base_df, :fid_1)
-    base_extent = select(base_df, Not([:Column1, :GISJOIN, :fid_1, :area]))
+    base_extent = select(base_df, Not([:Column1, :GISJOIN, :GEOID, :fid_1, :area]))
     base_mat = Matrix(base_extent)
 
     sort!(levee_df, :fid_1)
-    levee_extent = select(levee_df, Not([:Column1, :GISJOIN, :fid_1, :area]))
+    levee_extent = select(levee_df, Not([:Column1, :GISJOIN, :GEOID, :fid_1, :area]))
     levee_mat = Matrix(levee_extent)
 
     #Combine to create matrix

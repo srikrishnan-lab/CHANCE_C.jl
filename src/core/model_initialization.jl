@@ -56,7 +56,7 @@ function Simulator(bg_df, base_df, levee_df; slr = false, slr_scen = [3.03e-3,7.
 
     #Agent relocation
     averse_move = Dict(:levee => levee, :risk_averse => risk_averse, :mem => flood_mem, :base_prob => perc_move, :f_e => fixed_effect)
-    agent_relocate = Dict(:house_choice_mode => house_choice_mode, :bg_sample_size => no_hhs_per_agent, :budget_reduction_perc => budget_reduction_perc,
+    agent_relocate = Dict(:levee => levee, :f_e => fixed_effect, :house_choice_mode => house_choice_mode, :bg_sample_size => no_hhs_per_agent, :budget_reduction_perc => budget_reduction_perc,
      :a_c => simple_anova_coefficients, :f_c => flood_coefficient)
 
     #BuildingDevelopment

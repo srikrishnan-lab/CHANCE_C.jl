@@ -9,8 +9,8 @@ using CSV, DataFrames
 
 
 ## Load input Data
-balt_base = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-housing-data/model_inputs/surge_area_baltimore_base.csv")))
-balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-housing-data/model_inputs/surge_area_baltimore_levee.csv")))
+balt_base = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_base.csv")))
+balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_levee.csv")))
 
 #import functions to collect data 
 include(joinpath(dirname(@__DIR__), "src/data_collect.jl"))
@@ -24,17 +24,17 @@ no_of_years = 50
 perc_growth = 0.01
 house_choice_mode = "flood_mem_utility"
 flood_coefficient = -10^5
-breach = true 
+breach = true
 breach_null = 0.45  
 flood_mem = 10 
-fixed_effect = 0
+fixed_effect = 0.0
 
 ## For Risk Aversion
 ra_params = [0.3 0.7]
 
 avoid_abms = [Simulator(default_df, balt_base, balt_levee; scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coefficient, levee = false, breach = breach, breach_null = breach_null, risk_averse = i,
- flood_mem = flood_mem, fixed_effect = fixed_effect) for i in ra_params]
+ flood_mem = flood_mem, fixed_effect = fixed_effect, seed = 1897) for i in ra_params]
 
 adata = [(:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
 mdata = [flood_scenario, flood_record, total_fld_area]

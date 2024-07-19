@@ -9,8 +9,8 @@ using CSV, DataFrames
 
 
 ## Load input Data
-balt_base = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-housing-data/model_inputs/surge_area_baltimore_base.csv")))
-balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-housing-data/model_inputs/surge_area_baltimore_levee.csv")))
+balt_base = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_base.csv")))
+balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_levee.csv")))
 
 #List of kwargs for model properties. Variables below give the argument decription and default values.
 #Changing arguments requires declaring them as inputs in the initialization function
@@ -42,18 +42,23 @@ scenario = "Baseline"
 intervention = "Baseline"
 start_year = 2018
 no_of_years = 10
+perc_growth = 0.01
 perc_move = 0.025
 house_choice_mode = "flood_mem_utility"
+flood_coef = -10.0^5
 levee = false
-breach = true 
+breach = true
+slr_scen = "high" #Select SLR Scenario to use (choice of "low", "medium", and "high")
+slr_rate = [3.03e-3,7.878e-3,2.3e-2] #Define SLR Rate of change for each scenario ( list order is "low", "medium", and "high")
 breach_null = 0.45 
 risk_averse = 0.3 
 flood_mem = 10 
 fixed_effect = 0
 
 
-balt_abm = CHANCE_C.Simulator(default_df, balt_base, balt_levee; scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
-perc_move = perc_move, house_choice_mode = house_choice_mode, levee = levee, breach = breach, breach_null = breach_null, risk_averse = risk_averse, flood_mem = flood_mem, fixed_effect = fixed_effect)
+balt_abm = Simulator(default_df, balt_base, balt_levee; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
+pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
+ flood_mem = flood_mem, fixed_effect = fixed_effect)
 
 ### Define Model evolution ###
 """
@@ -76,7 +81,9 @@ step!(balt_abm,dummystep,CHANCE_C.model_step!,no_of_years)
 include(joinpath(dirname(@__DIR__), "src/data_collect.jl"))
 
 #Note: will need to re-initiate model to run
-balt_abm = CHANCE_C.Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years)
+balt_abm = Simulator(default_df, balt_base, balt_levee; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
+pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
+ flood_mem = flood_mem, fixed_effect = fixed_effect)
 
 adata = [(:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
 #mdata = 

@@ -25,7 +25,7 @@ mutable struct Properties{df<:DataFrame, scen<:String, itv<:String, t_p<:Int64, 
     tick::tick
 end
 
-function Simulator(bg_df, base_df, levee_df; slr = false, slr_scen = [3.03e-3,7.878e-3,2.3e-2], initial_vacancy = 0.20, 
+function Simulator(bg_df, base_df, levee_df; slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], initial_vacancy = 0.20, 
     scenario = "Baseline",intervention = "Baseline",start_year = 2018, no_of_years = 10, 
     no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33,
     hh_size = 2.7, pop_growth_mode = "perc" , pop_growth_perc = .01, 
@@ -37,7 +37,7 @@ function Simulator(bg_df, base_df, levee_df; slr = false, slr_scen = [3.03e-3,7.
 )
 
     flood_rng = MersenneTwister(seed)
-    f_matrix, f_dict = initialize_flood(flood_rng, base_df, levee_df; no_of_years = no_of_years, slr = slr, slr_scenarios = slr_scen, levee = levee, 
+    f_matrix, f_dict = initialize_flood(flood_rng, base_df, levee_df; no_of_years = no_of_years, slr_scen = slr_scen, slr_rate = slr_rate, levee = levee, 
     breach = breach, breach_null = breach_null, gev_d = default_gev)
 
 ##Input Updating##

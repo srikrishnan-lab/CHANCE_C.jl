@@ -33,7 +33,7 @@ fixed_effect = 0
 ra_params = [0.3 0.7]
 
 ## Include SLR
-slr_abms = [Simulator(default_df, balt_base, balt_levee; slr = true, slr_scen = [3.03e-3,7.878e-3,2.3e-2], scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
+slr_abms = [Simulator(default_df, balt_base, balt_levee; slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coefficient, levee = false, breach = breach, breach_null = breach_null, risk_averse = i,
  flood_mem = flood_mem, fixed_effect = fixed_effect) for i in ra_params]
 

@@ -87,7 +87,7 @@ end
     #medium scenario of SL change projection for 2031 is 0.15m and 0.93m for 2130 (NOAA)
     #low scenario of SL change projection for 2031 is 0.11m and 0.41m for 2130 (NOAA)
 
-function initialize_flood(model_rng, base_df, levee_df; no_of_years = 10, slr = false, slr_scenarios = [3.03e-3,7.878e-3,2.3e-2], levee = false, 
+function initialize_flood(model_rng, base_df, levee_df; no_of_years = 10, slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], levee = false, 
     breach = false, breach_null = 0.45, gev_d = default_gev)
 
 ## Create Matrix of surge from base and levee scenario ##
@@ -107,12 +107,11 @@ function initialize_flood(model_rng, base_df, levee_df; no_of_years = 10, slr = 
     ## Create record of flood return periods and breach events ##
     #Create GEV distribution
     flood_record = [GEV_event(model_rng, d = gev_d) for _ in 1:no_of_years]
-    #add SLR values to flood_events if including
-    if slr 
-        slr_draws = [rand(model_rng, Categorical([(1/3) for _ in 1:3])) for _ in 1:no_of_years]
-        slr_record = slr_scenarios[slr_draws] .* collect(1:no_of_years)
-        flood_record .+= slr_record
-    end
+    #add SLR values to flood_events 
+    slr_dict = Dict(["low", "medium","high"] .=> slr_rate)
+    slr_record = slr_dict[slr_scen] .* collect(1:no_of_years)
+    flood_record .+= slr_record
+    
     
     #Determine which scenario to draw from (baseline or levee)
     if levee

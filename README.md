@@ -1,6 +1,6 @@
-# CHANCE-C Julia
+# CHANCE-C Julia (v1.1)
 
-A Julia port of the python-based CHANCE-C ABM Framework.
+A Julia port of the python-based CHANCE-C ABM Framework. 
 
 ## Purpose
 
@@ -12,19 +12,19 @@ A dataframe of Block Group attributes must first be created in order to calculat
 
 ## Repository Structure
 
-* `data/` contains all raw data inputs. Folder currently empty for this model version.
-* `src/` stores the required julia files necessary to run the model. This includes `agents_struct.jl` which defines the agent types, `model_intitialization.jl` that defines the ABM initialization function, and the folders  `agent_functions/` and `model_functions/` which hold functions to evolve agents and the model over time. `CHANCE_C.jl` holds the module that exports theses relevant functions. 
-* `test/` contains scripts for example model runs and unit test cases for the model evolution. `abm_baltimore_example.jl` provides example code to initialize and evolve one model instance, as well as visualize model results. `figure_recreation.jl` provides code to recreate the sensitivity analysis conducted on structural model parameters from [Yoon et al., 2023](https://doi.org/10.1016/j.compenvurbsys.2023.101979).
+* `data/` contains all model input files neceesary to initialize the model. Folder currently holds data specific to Baltimore by default, but new files for a different city may be added as long as they follow a similar data structure. Alternatively, these dataframes may be read as inputs during model initialization (see Model Initialization for more).
+* `src/` stores the required julia files necessary to run the model. This includes `agents_struct.jl` which defines the agent types, `model_intitialization.jl` that defines the ABM initialization function, and the folders  `agent_functions/` and `model_functions/` which hold functions to evolve agents and the model over time. `CHANCE_C.jl` holds the module that exports theses relevant functions.
+* `test/` contains scripts for example model runs and unit test cases for the model evolution. `abm_baltimore_example.jl` provides example code to initialize and evolve one model instance, as well as visualize model results `figure_recreation.jl`.
 
 ## Installation
 
 ### Software Requirements
 
-You need to install [Julia 1.7.0](https://julialang.org/) or newer to run this model. Download Julia from https://julialang.org/downloads/ 
+You need to install [Julia 1.7.0](https://julialang.org/) or newer to run this model. Download Julia [here](https://julialang.org/downloads/). 
 
 ### Installing CHANCE_C
 
-To install CHANCE_C.jl, access the Pkg REPL  and execute the following command:
+To install this version of CHANCE_C, access the Pkg REPL and execute the following command:
 
 ```julia-repl
 pkg> add https://github.com/srikrishnan-lab/CHANCE_C.jl
@@ -41,16 +41,19 @@ The following section provides an overview on the inputs and functions necessary
 A CHANCE-C model instance is initialized using the `Simulator()` function defined in `src/model_initialization.jl`. Inputs for `Simulator` are all defined with their default arguments, so no inputs have to be declared upon declaration to create a default model instance. Important input arguments for `Simulator` include:
 
 * `df`: a Block Group dataframe input to create the BlockGroup and HHAgent agents. The block group dataframe is also saved as a model property (`model.df`). By default, the `bg_baltimore` dataframe is automatically inputted here. To use block groups in a different location, input a different dataframe for this argument, or change the path pointer to its csv file under `src/model_initialization.jl`.
-* `no_of_years:` number of years that the model will be evolved for. Used to create the size of the vector for the BlockGroup attribute `demand_exceeds_supply`.
-* `house_choice_mode`: Defines how agent utilities are calculated. Decides which structural variant to use for model evolution.
-
-Structural variants of CHANCE-C must be declared upon model initialization. To select a structural variant and declare its associated parameter value, refer to the following table:
-
-| Structural variant | `house_choice_mode`      | parameter argument name   | argument type `Float64` |
-| ------------------ | -------------------------- | ------------------------- | ------------------------- |
-| Disamenity         | "simple_flood_utility"     | `flood_coefficient`     | Negative Real Number      |
-| Avoidance          | "simple_avoidance_utility" | `simple_avoidance_perc` | Decimal                   |
-| Protection         | "budget_reduction"         | `budget_reduction_perc` | Decimal                   |
+* `no_of_years=10:` number of years that the model will be evolved for. Used to create the size of the vector for the BlockGroup attribute `demand_exceeds_supply`.
+* `house_choice_mode= "flood_mem_utility"`: Defines how agent utilities are calculated. Decides which structural variant to use for model evolution.
+* `perc_growth =0.01`: Net Population Growth Rate of HHAgents
+* `perc_move =0.025`
+* `flood_coef =-10.0^5`
+* `levee =false`: Determines which intervention scenario to utilize, levee (true) or no-levee (false).
+* `breach =true`: Determines whether breaching is considered as a failure mode in the levee scenario
+* `slr_scen ="high"`: Select SLR Scenario to use (choice of "low", "medium", and "high")
+* `slr_rate = [3.03e-3,7.878e-3,2.3e-2]` Define SLR Rate of change for each scenario (list order is "low", "medium", and "high")
+* `breach_null =0.45:`Likelihood of levee breaching. Adjusts the underlying breach probability function. (Range [0.3, 0.5])
+* `risk_averse =0.3`: Defines HHAgent level of Flood Risk Aversion when calculating movement probability. (Range [0,1])
+* `flood_mem =10`: Defines HHAgent flood memory duration (years)
+* `fixed_effect =0` (Range [0,0.01)
 
 For more details about the optional keyword arguments, please read the descriptions found in `test/abm_baltimore_example.jl`.
 
@@ -59,12 +62,13 @@ For more details about the optional keyword arguments, please read the descripti
 Once the model is initialized, step functions must be declared to define how agents and the overall model evolve over time. For CHANCE-C, agent and model evolution is defined under one function, `model_step!`, located under `src/model_evolution.jl`. The order of updating functions for one time step within `model_step!` is as follows:
 
 1. `NewAgentCreation` - HHAgents are created and added to the model. The number of agents added is based on the growth rate parameter `pop_growth_perc`
-2. `ExistingAgentSampler` - a proportion of HHagents are selected to move from each Block Group
-3. `AgentLocation` - Moving HHAgents rank a sample of viable BlockGroup locations based on their expected utility. The preferred BlockGroups and their associated utilities, as well as the HHAgents' incomes, are saved as a DataFrame and stored as a model property (`model.hh_utilities_df`)
-4. `HousingMarket` - HHAgents are matched with their preferred BlockGroup.  HHAgents are moved to a new location or exit the model based on availability.
-5. `Building Development` - Housing supply is increased in BlockGroups with high demand (demand > supply) based on the outcome of HousingMarket
-6. `HousingPricing` - Housing prices are increased for BlockGroups with high demand (demand > supply) or decreased for BlockGroups with a continuous period of low demand (demand < supply for multiple consecutive years).
-7. `LandcapeStatistics` - Updates block group attribute columns in `model.df` based on updated BlockGroup Attributes from prior functions.
+2. `flooded` - Records the total inundatation area within each BlockGroup, based on flood occurrence in the present time step and past time steps within the flood memory window, as specified by `mem`.
+3. `agent_prob` - a proportion of HHagents are selected to move in each BlockGroup, primarily based on the level of experienced flood events in each Block Group
+4. `AgentLocation` - Moving HHAgents rank a sample of viable BlockGroup locations based on their expected utility. The preferred BlockGroups and their associated utilities, as well as the HHAgents' incomes, are saved as a DataFrame and stored as a model property (`model.hh_utilities_df`)
+5. `HousingMarket` - HHAgents are matched with their preferred BlockGroup.  HHAgents are moved to a new location or exit the model based on availability.
+6. `BuildingDevelopment` - Housing supply is increased by 5% in BlockGroups with high demand (demand > supply) based on the outcome of `HousingMarket`
+7. `HousingPricing` - Housing prices are increased by 5% for BlockGroups with high demand (demand > supply) or decreased for BlockGroups with a continuous period of low demand (demand < supply for multiple consecutive years).
+8. `LandcapeStatistics` - Updates block group attribute columns in `model.df` based on updated BlockGroup Attributes from prior functions.
 
 To evolve the model without collecting data, call `step!(model::ABM, agent_step, model_step, no_of_years::Int)`. Again, for CHANCE-C, all agent and model evolution are handled by `model_step!`, so the correct call for evolving a CHANCE-C model is `step!(model::ABM, dummystep, model_step!, no_of_years::Int)`.
 

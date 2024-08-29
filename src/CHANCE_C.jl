@@ -11,7 +11,7 @@ export
     Simulator,
     BlockGroup,
     HHAgent,
-    Queue,
+    House,
     default_df,
     default_gev,
     agent_step!,
@@ -23,7 +23,8 @@ export
     ensemblerun!,
     levee_breach,
     m_to_ft,
-    breach_occur
+    breach_occur,
+    ExistingAgentResampler
     #AgentLocation,
     #HousingMarket,
     #BuildingDevelopment,

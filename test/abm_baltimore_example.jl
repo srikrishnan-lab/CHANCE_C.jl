@@ -1,5 +1,5 @@
 import Pkg
-Pkg.activate(dirname(@__DIR__))
+Pkg.activate(".")
 Pkg.instantiate()
 
 include(joinpath(dirname(@__DIR__), "src/CHANCE_C.jl"))
@@ -9,8 +9,8 @@ using CSV, DataFrames
 
 
 ## Load input Data
-balt_base = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_base.csv")))
-balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_levee.csv")))
+balt_base = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/surge_area_baltimore_base.csv")))
+balt_levee = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/surge_area_baltimore_levee.csv")))
 
 #List of kwargs for model properties. Variables below give the argument decription and default values.
 #Changing arguments requires declaring them as inputs in the initialization function
@@ -38,9 +38,7 @@ price_increase_perc = .05
 
 ### Intialize Model ###
 #Define relevant parameters
-scenario = "Baseline"
-intervention = "Baseline"
-start_year = 2018
+model_evolve = CHANCE_C.model_step!
 no_of_years = 10
 perc_growth = 0.01
 perc_move = 0.025
@@ -56,7 +54,7 @@ flood_mem = 10
 fixed_effect = 0
 
 
-balt_abm = Simulator(default_df, balt_base, balt_levee; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
+balt_abm = Simulator(default_df, balt_base, balt_levee, model_evolve; slr_scen = slr_scen, slr_rate = slr_rate, no_of_years = no_of_years,
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
  flood_mem = flood_mem, fixed_effect = fixed_effect)
 

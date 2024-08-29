@@ -1,20 +1,24 @@
-function ExistingAgentResampler(agent::BlockGroup, model::ABM; perc_move = 0.10)
-    bg_agents = [a for a in agents_in_position(agent, model) if a isa HHAgent]
-    no_of_agents_moving = Int(round(perc_move * length(bg_agents))) #number of HHAgents moving from BlockGroup
+function ExistingAgentResampler(agent::HHAgent, model::ABM; perc_move = 0.10)
+    residents = [agent.occ_low, agent.occ_mid, agent.occ_high]
+    agents_moving = [Int(round(perc_move * a)) for a in residents] 
+    no_of_agents_moving = sum(agents_moving) #number of HHAgents wanting to move 
     if no_of_agents_moving < 1
     #not enough agents
         return
     end
-    agents_moving = sample(model.rng, bg_agents, no_of_agents_moving; replace = false) #Randomly sampled agents that will move
-    #Update BG id property for moving agents
-    setproperty!.(agents_moving, :bg_id, 0)
-    #Move agents to relocating Queue
-    move_agent!.(agents_moving, Ref(model[0].pos), Ref(model))
-    #Update occupied and available_units bg properties
-    agent.occupied_units -= no_of_agents_moving
-    agent.available_units += no_of_agents_moving
+
+    #Update number of agents moving 
+    setproperty!(agent, :n_move, no_of_agents_moving)
+    setproperty!(agent, :n_stay, agent.n_stay - no_of_agents_moving)
+    #Update occupied and available_units for associated Houses
+    house_agents = [a for a in agents_in_position(agent, model) if a isa House]
+    for house in house_agents
+        house.occupied_units -= agents_moving[house.quality]
+        house.available_units += agents_moving[house.quality]
+    end
     
-    agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
+    
+    #agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
 end
 
 function agent_prob!(agent::BlockGroup, model::ABM; levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
@@ -87,7 +91,7 @@ end
 
 """
 functions NewAgentLocation and ExistingAgentLocation in the python version of CHANCE-C are recreated with function AgentLocation. 
-"""
+
 
 function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
     budget_reduction_perc = 0.10, a_c = [-121428, 294707, 130553, 128990, 154887], f_c = -500000)
@@ -131,3 +135,4 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
     end
     append!(model.hh_utilities_df, bg_sample)
 end
+"""

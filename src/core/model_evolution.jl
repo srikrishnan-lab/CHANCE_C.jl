@@ -15,34 +15,35 @@ end
  
 function agent_step!(agent::BlockGroup, model::ABM)
     flooded!(agent, model; mem = model.relo_sampler[:mem])
-    agent_prob!(agent, model; model.relo_sampler...)
+    calc_utility(agent, model)
 end
-""" 
-function agent_step!(agent::Queue, model::ABM)
-    AgentLocation(agent, model; model.agent_relocate...)
+
+function agent_step!(agent::House, model::ABM)
+    #Don Nothing
 end
-"""
+
 function block_step!(agent::BlockGroup, model::ABM)
-    BuildingDevelopment(agent, model; model.build_develop...)
+    #BuildingDevelopment(agent, model; model.build_develop...)
     HousingPricing(agent, model; model.house_price...)
 end
  
+
 #Define model evolution
 function model_step!(model::ABM)
     #Update Year
     model.tick += 1
-    #clear utilities df
-    empty!(model.hh_utilities_df)
+    #clear utilities 
+    fill!(model.hh_utilities, 0.0)
     #create new agents
-    NewAgentCreation(model; model.agent_creation...)
+    #NewAgentCreation(model; model.agent_creation...)
     #Determine relocating HHAgents and potential moving locations
     for id in Agents.schedule(model)
         agent_step!(model[id],model)
     end
  
     #run Housing Market to move HHAgents to desired locations
-    HousingMarket(model)
- 
+    AgentMigration(model)
+    """
     #Update BlockGroup conditions
     for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
         block_step!(model[id], model)
@@ -53,6 +54,7 @@ function model_step!(model::ABM)
         end
          
     end
+    """
     LandscapeStatistics(model)
-    model.total_population = sum([a.population for a in allagents(model) if a isa BlockGroup])
+    model.total_population = sum([a.population for a in allagents(model) if a isa HHAgent])
 end

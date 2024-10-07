@@ -5,7 +5,7 @@ mutable struct BlockGroup <: AbstractAgent
     #Attributes
     id::Int64
     pos::Dims{2}
-    blkgrpce::Int64
+    GEOID::Int64
     #geometry::String
     area::Float64
     #land_elevation
@@ -21,7 +21,7 @@ mutable struct BlockGroup <: AbstractAgent
     salespricesf93::Float64
 
     population::Int64
-    flood_hazard_risk::Int64
+    flood_hazard::Float64
     new_price::Float64
     years_since_major_flooding::Int64
     occupied_units::Int64
@@ -39,7 +39,7 @@ end
 function add_bg(row, no_of_years)
 
     new_bg = BlockGroup(Int(row.fid_1),(0,0),
-    row.BLKGRPCE,row.ALAND, 
+    row.GEOID,row.ALAND, 
     row.AJWME001, row.perc_fld_area,
     row.pop1990, row.mhi1990, row.hhsize1990,
     row.coastdist, row.cbddist, row.hhtrans1993,

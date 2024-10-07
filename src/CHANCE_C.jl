@@ -6,6 +6,8 @@ using DataFrames
 using Statistics,StatsBase,Distributions
 using Random
 using Extremes
+using JuMP
+import HiGHS
 
 export 
     Simulator,

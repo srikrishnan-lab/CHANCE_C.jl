@@ -6,7 +6,7 @@ include("flood_dynamics.jl")
 
 
 mutable struct Properties{df<:DataFrame, t_p<:Int64, a_c<:Dict, r_s<:Dict, a_r<:Dict, b_d<:Dict,
-     h_p<:Dict, u_hhs<:Array, no_y<:Int64, f_mat<:Array, f_dict<:Dict, tick<:Int64}
+     h_p<:Dict, u_hhs<:Array, p_t<:Array, no_y<:Int64, f_mat<:Array, f_dict<:Dict, tick<:Int64}
     df::df
     total_population::t_p 
     agent_creation::a_c
@@ -15,10 +15,11 @@ mutable struct Properties{df<:DataFrame, t_p<:Int64, a_c<:Dict, r_s<:Dict, a_r<:
     build_develop::b_d
     house_price::h_p
     hh_utilities::u_hhs
-    no_of_years::no_y
+    pop_transfers::p_t
     #Additional properties for Flood Dynamics
     flood_matrix::f_mat
     flood_dict::f_dict
+    no_of_years::no_y
     tick::tick
 end
 
@@ -38,6 +39,8 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
 
     #Utility Matrix 
     u_matrix = zeros(size(bg_df)[1],3,3)
+    #Utility Matrix
+    p_matrix = zeros(size(bg_df)[1],3,3)
 
 ##Input Updating##
     #Replace missing hhsize values with median hhsize values
@@ -69,7 +72,7 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
     space = GridSpace((width,width))
 
     parameters = Properties(new_df, 0, agent_creation, averse_move, agent_relocate, build_develop, house_price, 
-    u_matrix, no_of_years, f_matrix, f_dict, 0)
+    u_matrix, p_matrix, f_matrix, f_dict, no_of_years, 0)
 
     model = ABM(
         Union{BlockGroup,HHAgent, House},
@@ -148,8 +151,9 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
     # calculate normalized statistics for block groups
     housing_df[!,"average_income_norm"] = housing_df[!, "average_income"] / maximum(filter(!isnan,housing_df.average_income))
 
-    # merge with housing_df with model.df to retain geometry features
+    # merge with housing_df with model.df to retain geometry features.
     model.df = leftjoin(model.df, housing_df, on = "fid_1" => "name")
+    sort!(model.df, :fid_1)
 
     return model
 end

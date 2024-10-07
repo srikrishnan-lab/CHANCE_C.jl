@@ -28,7 +28,7 @@ function agent_prob!(agent::BlockGroup, model::ABM; levee = false, risk_averse =
     ### Calculate logistic Probability ###
    
     #Fixed effect: define scaling factor depending on levee presence
-    scale_factor = levee ? 0.1 - f_e : 0.1
+    #scale_factor = levee ? 0.1 - f_e : 0.1
     #Calculate flood probability based on risk averse value
     if agent.flood_hazard == 0
         flood_prob = base_prob
@@ -47,7 +47,7 @@ function agent_prob!(agent::BlockGroup, model::ABM; levee = false, risk_averse =
     ### Move triggered agents to Queue ###
 
     bg_agents = [a for a in agents_in_position(agent, model) if a isa HHAgent]
-    agents_moving = bg_agents[Bool.(rand(model.rng, Binomial(1,move_prob),length(bg_agents)))] #HHAgents moving from BlockGroup
+    agents_moving = bg_agents[Bool.(rand(abmrng(balt_abm), Binomial(1,move_prob),length(bg_agents)))] #HHAgents moving from BlockGroup
     no_of_agents_moving = length(agents_moving)
 
     if no_of_agents_moving < 1
@@ -67,26 +67,43 @@ function agent_prob!(agent::BlockGroup, model::ABM; levee = false, risk_averse =
     
 end
 
-function calc_utility(row, house_choice_mode, levee, f_e, model::ABM; cd_dict = Dict(:a=>0.4,:b=>0.4,:c=>0.2), anova_coef = [-121428, 294707, 130553, 128990, 154887], flood_coef = -500000)
+
+function calc_utility(agent::BlockGroup, model::ABM; anova_coef = [-121428, 294707, 130553, 128990, 154887], flood_coef = -500000)
     #Determine if flood disamenity is reduced from levee presence
-    scale_factor = levee ? 1.0 - (10 * f_e) : 1.0
+    #scale_factor = levee ? 1.0 - (10 * f_e) : 1.0
+    row = model.df[agent.id, :]
+    util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
+    (anova_coef[5] * row.N_MeanFullBathNumber) + (flood_coef * (agent.flood_hazard/model.relo_sampler[:mem])) + (1 * row.residuals)
 
-    if house_choice_mode == "cobb_douglas_utility"
-        util = row.average_income_norm ^ cd_dict[:a] * row.prox_cbd_norm ^ cd_dict[:b] * row.flood_risk_norm ^ cd_dict[:c]
+    model.hh_utilities[agent.id,:,:] = repeat([util * 0.75, util, util * 1.25], 1, 3)'
+end 
 
-    elseif house_choice_mode == "simple_flood_utility"
-        util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
-        (anova_coef[5] * row.N_MeanFullBathNumber) + (flood_coef * row.perc_fld_area) + (1 * row.residuals)
-        
-    elseif house_choice_mode == "flood_mem_utility"
-        util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
-        (anova_coef[5] * row.N_MeanFullBathNumber) + (scale_factor * flood_coef * (model[Int(row.fid_1)].flood_hazard/model.relo_sampler[:mem])) + (1 * row.residuals)
+## Functions to update HHAgent and House attributes after Agent Sorting
 
-    else #house_choice_mode == "simple_anova_utility" or house_choice_mode == "budget_reduction" or house_choice_mode == "simple_avoidance_utility"
-        util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
-        (anova_coef[5] * row.N_MeanFullBathNumber) + (1 * row.residuals)
-    end
-    return util 
+function relo_update!(agent::HHAgent, relo_mat::Array)
+    b_g = agent.bg_id
+    pop_group = agent.inc_cat
+    agent.occ_low += relo_mat[b_g, 1, pop_group]
+    agent.occ_mid += relo_mat[b_g, 2, pop_group]
+    agent.occ_high += relo_mat[b_g, 3, pop_group]
+
+    new_pop = agent.occ_low + agent.occ_mid + agent.occ_high
+
+    setproperty!(agent, :population, new_pop)
+    setproperty!(agent, :n_move, 0)
+    setproperty!(agent, :n_stay, new_pop)
+
+
+end
+
+function relo_update!(agent::House, relo_mat::Array)
+    b_g = agent.bg_id
+    house_group = agent.quality
+
+    agent.occupied_units += sum(relo_mat[b_g, house_group, :])
+    agent.available_units -= sum(relo_mat[b_g, house_group, :])
+
+    @assert agent.occupied_units + agent.available_units == agent.capacity
 end
 
 """

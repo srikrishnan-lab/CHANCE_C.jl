@@ -1,7 +1,7 @@
 function ExistingAgentResampler(agent::HHAgent, model::ABM; perc_move = 0.10)
     residents = [agent.occ_low, agent.occ_mid, agent.occ_high]
-    agents_moving = [Int(round(perc_move * a)) for a in residents] 
-    no_of_agents_moving = sum(agents_moving) #number of HHAgents wanting to move 
+    agents_moving = rand.(abmrng(model), Binomial.(residents, perc_move)) #number of households wanting to move from each housing type 
+    no_of_agents_moving = sum(agents_moving) #total number of households moving from this HHAgent type
     if no_of_agents_moving < 1
     #not enough agents
         return
@@ -21,14 +21,14 @@ function ExistingAgentResampler(agent::HHAgent, model::ABM; perc_move = 0.10)
     #agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
 end
 
-function agent_prob!(agent::BlockGroup, model::ABM; levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
+function AgentMove!(agent::BlockGroup, model::ABM; levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
     """Function determines probability of agent action
     using a risk aversion function.
     Output updates agent's action property""" 
     ### Calculate logistic Probability ###
    
     #Fixed effect: define scaling factor depending on levee presence
-    #scale_factor = levee ? 0.1 - f_e : 0.1
+    scale_factor = levee ? 0.1 - f_e : 0.1
     #Calculate flood probability based on risk averse value
     if agent.flood_hazard == 0
         flood_prob = base_prob
@@ -44,26 +44,12 @@ function agent_prob!(agent::BlockGroup, model::ABM; levee = false, risk_averse =
      
     move_prob = flood_prob <= 1.0 ? flood_prob : 1
     
-    ### Move triggered agents to Queue ###
+    ### Calculate number of from each HHAgent category ###
 
     bg_agents = [a for a in agents_in_position(agent, model) if a isa HHAgent]
-    agents_moving = bg_agents[Bool.(rand(abmrng(balt_abm), Binomial(1,move_prob),length(bg_agents)))] #HHAgents moving from BlockGroup
-    no_of_agents_moving = length(agents_moving)
-
-    if no_of_agents_moving < 1
-    #not enough agents
-        return
+    for hhagent in bg_agents
+        ExistingAgentResampler(hhagent, model; perc_move = move_prob)
     end
-
-    #Update BG id property for moving agents
-    setproperty!.(agents_moving, :bg_id, 0)
-    #Move agents to relocating Queue
-    move_agent!.(agents_moving, Ref(model[0].pos), Ref(model))
-    #Update occupied and available_units bg properties
-    agent.occupied_units -= no_of_agents_moving
-    agent.available_units += no_of_agents_moving
-    
-    agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
     
 end
 

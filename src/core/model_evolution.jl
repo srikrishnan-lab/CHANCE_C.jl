@@ -9,12 +9,12 @@ include(joinpath(dirname(@__DIR__), "model_functions/model_include.jl"))
 
 #Define agent steps
 function agent_step!(agent::HHAgent, model::ABM)
-    ExistingAgentResampler(agent, model)
     #Do nothing  
 end
  
 function agent_step!(agent::BlockGroup, model::ABM)
     flooded!(agent, model; mem = model.relo_sampler[:mem])
+    AgentMove!(agent, model; model.relo_sampler...)
     calc_utility(agent, model)
 end
 
@@ -23,7 +23,7 @@ function agent_step!(agent::House, model::ABM)
 end
 
 function block_step!(agent::BlockGroup, model::ABM)
-    #BuildingDevelopment(agent, model; model.build_develop...)
+    BuildingDevelopment(agent, model; model.build_develop...)
     HousingPricing(agent, model; model.house_price...)
 end
  

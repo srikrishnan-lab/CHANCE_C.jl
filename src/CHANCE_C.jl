@@ -26,12 +26,12 @@ export
     levee_breach,
     m_to_ft,
     breach_occur,
-    ExistingAgentResampler
+    ExistingAgentResampler,
     #AgentLocation,
-    #HousingMarket,
+    AgentMigration,
     #BuildingDevelopment,
     #HousingPricing,
-    #LandscapeStatistics
+    LandscapeStatistics
 
 #import Agent Types and Flood Dynamics Functions
 include("core/agent_structs.jl")

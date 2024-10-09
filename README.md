@@ -1,10 +1,10 @@
 # CHANCE-C Julia (v1.1)
 
-A Julia port of the python-based CHANCE-C ABM Framework. 
+A Julia port of the python-based CHANCE-C ABM Framework.
 
 ## Purpose
 
-This repository holds the data and functions required to create and run a CHANCE-C ABM in julia using Agents.jl. More information about the CHANCE-C Framework can be found in [Yoon et al., 2023](https://doi.org/10.1016/j.compenvurbsys.2023.101979).  To view the original code from which this port is based on, please refer to the original [CHANCE-C repository](https://github.com/jimyoon/icom_abm). For general information about Agents.jl and its capabilities, please read the package [docs](https://juliadynamics.github.io/Agents.jl/stable/).
+This repository holds the data and functions required to create and run a CHANCE-C ABM in julia using Agents.jl. More information about the CHANCE-C Framework can be found in [Yoon et al., 2023](https://doi.org/10.1016/j.compenvurbsys.2023.101979).  To view the original code from which this port is based on, please refer to the original [CHANCE-C repository](https://github.com/jimyoon/icom_abm). This version builds on the original framework by representing flood occurrence dynamically to simulate agent response to changing flood hazard.
 
 ## Data reference
 
@@ -20,14 +20,16 @@ A dataframe of Block Group attributes must first be created in order to calculat
 
 ### Software Requirements
 
-You need to install [Julia 1.7.0](https://julialang.org/) or newer to run this model. Download Julia [here](https://julialang.org/downloads/). 
+This model requires [Julia 1.7.0](https://julialang.org/) or newer to run. Download Julia [here](https://julialang.org/downloads/).
+
+Additionally, CHANCE-C 1.1 uses v5.14 of Agents.jl to run the model.  **This model version is incompatible with v6.0 or later of Agents.jl.** For general information about Agents.jl and its capabilities, please read the package [docs](https://juliadynamics.github.io/Agents.jl/v5.14/).
 
 ### Installing CHANCE_C
 
 To install this version of CHANCE_C, access the Pkg REPL and execute the following command:
 
 ```julia-repl
-pkg> add https://github.com/srikrishnan-lab/CHANCE_C.jl
+pkg> add https://github.com/srikrishnan-lab/CHANCE_C.jl#dynamic_ff
 ```
 
 Note: It is best practice to set up a julia project environment prior to installing this package and running the model. For an explanation on the julia project environment and accessing the Pkg Repl in Julia, read the [Package docs](https://pkgdocs.julialang.org/v1/getting-started/).
@@ -40,20 +42,20 @@ The following section provides an overview on the inputs and functions necessary
 
 A CHANCE-C model instance is initialized using the `Simulator()` function defined in `src/model_initialization.jl`. Inputs for `Simulator` are all defined with their default arguments, so no inputs have to be declared upon declaration to create a default model instance. Important input arguments for `Simulator` include:
 
-* `df`: a Block Group dataframe input to create the BlockGroup and HHAgent agents. The block group dataframe is also saved as a model property (`model.df`). By default, the `bg_baltimore` dataframe is automatically inputted here. To use block groups in a different location, input a different dataframe for this argument, or change the path pointer to its csv file under `src/model_initialization.jl`.
+* `df`: a Block Group dataframe input to create the BlockGroup and HHAgent agents. The block group dataframe is also saved as a model property (`model.df`). By default, the `bg_baltimore` dataframe is automatically inputted here. To use block groups in a different location, input a different dataframe for this argument, or change the path location pointer to its csv file under `src/model_initialization.jl`. This new dataframe should follow the same structure as the `bg_baltimore` dataframe file. To view the `bg_baltimore `dataframe, please refer to the `/data` folder.
 * `no_of_years=10:` number of years that the model will be evolved for. Used to create the size of the vector for the BlockGroup attribute `demand_exceeds_supply`.
-* `house_choice_mode= "flood_mem_utility"`: Defines how agent utilities are calculated. Decides which structural variant to use for model evolution.
+* `house_choice_mode= "flood_mem_utility"`: Defines how agent utilities are calculated, and decides which structural variant to use for model evolution.
 * `perc_growth =0.01`: Net Population Growth Rate of HHAgents
-* `perc_move =0.025`
-* `flood_coef =-10.0^5`
+* `perc_move =0.025:` Base Probability of Agent Movement at each timestep, excluding flood risk perception
+* `flood_coef =-10.0^5`: Weight of flood experience on sgent utility function. Applicable only when house_choice_mode = "flood_mem_utility"
 * `levee =false`: Determines which intervention scenario to utilize, levee (true) or no-levee (false).
 * `breach =true`: Determines whether breaching is considered as a failure mode in the levee scenario
 * `slr_scen ="high"`: Select SLR Scenario to use (choice of "low", "medium", and "high")
-* `slr_rate = [3.03e-3,7.878e-3,2.3e-2]` Define SLR Rate of change for each scenario (list order is "low", "medium", and "high")
+* `slr_rate = [3.03e-3,7.878e-3,2.3e-2]` Define annual SLR Rate of change for each scenario (list order is "low", "medium", and "high"). Default values are based on the calculated linear rate of change from the [USACE Baltimore Feasibility Study](https://www.nab.usace.army.mil/Portals/63/docs/Civil%20Works/Balt%20CSRM/NAB%20-%2005b%20-%20BaltCSRM%20-%20Draft%20Report%20-%20Appendix%20B%20-%20HNH.pdf).
 * `breach_null =0.45:`Likelihood of levee breaching. Adjusts the underlying breach probability function. (Range [0.3, 0.5])
 * `risk_averse =0.3`: Defines HHAgent level of Flood Risk Aversion when calculating movement probability. (Range [0,1])
 * `flood_mem =10`: Defines HHAgent flood memory duration (years)
-* `fixed_effect =0` (Range [0,0.01)
+* `fixed_effect =0`: Defines the direct level of influence of levee presence on agent flood risk perception, both in terms of agent movement probability and agent utility (Range [0,0.01)
 
 For more details about the optional keyword arguments, please read the descriptions found in `test/abm_baltimore_example.jl`.
 

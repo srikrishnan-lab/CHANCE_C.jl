@@ -39,7 +39,7 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
 
     #Utility Matrix 
     u_matrix = zeros(size(bg_df)[1],3,3)
-    #Utility Matrix
+    #Move Matrix
     p_matrix = zeros(size(bg_df)[1],3,3)
 
 ##Input Updating##
@@ -75,7 +75,7 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
     u_matrix, p_matrix, f_matrix, f_dict, no_of_years, 0)
 
     model = ABM(
-        Union{BlockGroup,HHAgent, House},
+        Union{BlockGroup, House, HHAgent},
         space,
         scheduler = Schedulers.ByType((BlockGroup, House, HHAgent), false),
         model_step! = model_evolve,
@@ -87,9 +87,12 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
     #Create block group agents (network nodes)
     #AgentsIO.populate_from_csv!(model, filename, add_bg; row_number_is_id = true)
     for row in Tables.namedtupleiterator(model.df)
-        add_agent_single!(add_bg(row, no_of_years), model)
+        add_agent_single!(add_bg(row), model)
     end
     
+    #Create housing demand record for House agents
+    demand_record = repeat([false], no_of_years)
+
     #Create Household agents and add to block groups
     housing_df = DataFrame(name = Any[], no_hh_agents  = Any[], population = Int64[], average_income = Float64[], avg_hh_size = Float64[], 
     pop_density = Float64[], occupied_units = Int64[], available_units = Int64[], demand_exceeds_supply = Bool[])
@@ -115,17 +118,23 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
             bg.population = bg.pop90
         end
 
+        #add occupied unit to associated block group node 
+        bg.occupied_units = no_of_agents
+        #Calculate available_units for associated block group 
+        bg.available_units = round((initial_vacancy * no_of_agents) / (1 - initial_vacancy))
+
         for a in 1:3
             agent_pop = ceil(Int,no_of_agents/3)
+            avail_units = ceil(Int,bg.available_units/3)
             #Decide where agents are living (TEMPORARY)
             houses = zeros(3)
             houses[a] = agent_pop
             #Add agent to model
             add_agent!(bg.pos, HHAgent, model, bg.id, no_hhs_per_agent, Int(round(bg.hhsize90)),a, 
-            Float64(bg.mhi90), agent_pop, houses[1], houses[2], houses[3], 0, agent_pop, simple_avoidance_perc)
+            Float64(bg.mhi90), agent_pop * no_hhs_per_agent * Int(round(bg.hhsize90)), houses[1], houses[2], houses[3], 0, agent_pop, simple_avoidance_perc)
             #Houses
-            add_agent!(bg.pos, House, model, bg.id, a, agent_pop, ceil(Int,no_of_agents/2) - ceil(Int,no_of_agents/3),
-             ceil(Int,no_of_agents/2), 0.0)
+            add_agent!(bg.pos, House, model, bg.id, a, demand_record, agent_pop, avail_units,
+             agent_pop + avail_units, bg.new_price)
         end
 
         #Calculate BG statistics based on agent properties within each BG
@@ -133,11 +142,7 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
         bg.avg_hh_income = mean([a.income for a in agents_in_position(bg.pos, model) if a isa HHAgent])
         bg.avg_hh_size = mean([a.hh_size for a in agents_in_position(bg.pos, model) if a isa HHAgent])
 
-        bg.pop_density = bg.population / bg.area
-        #add occupied unit to associated block group node 
-        bg.occupied_units = no_of_agents
-        #Calculate available_units for associated block group 
-        bg.available_units = round((initial_vacancy * no_of_agents) / (1 - initial_vacancy)) 
+        bg.pop_density = bg.population / bg.area 
         
         #add to dataframe 
         push!(housing_df, [bg.id, no_of_hhs, bg.population, bg.avg_hh_income, bg.avg_hh_size, bg.pop_density, bg.occupied_units, bg.available_units, bg.demand_exceeds_supply[1]])
@@ -146,7 +151,7 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
 
     #model.avg_hh_income = mean([a.income for a in allagents(model) if a isa HHAgent])
     #model.avg_hh_size = mean([a.hh_size for a in allagents(model) if a isa HHAgent])
-    model.total_population = sum([a.population for a in allagents(model) if a isa BlockGroup])
+    model.total_population = sum([a.population for a in allagents(model) if a isa HHAgent])
 
     # calculate normalized statistics for block groups
     housing_df[!,"average_income_norm"] = housing_df[!, "average_income"] / maximum(filter(!isnan,housing_df.average_income))

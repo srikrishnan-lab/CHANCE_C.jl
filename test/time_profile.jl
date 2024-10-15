@@ -34,18 +34,20 @@ function evo_step!(model::ABM)
  
     #run Housing Market to move HHAgents to desired locations
     @timeit tmr "AgentMigration" CHANCE_C.AgentMigration(model)
-    """
+    
     #Update BlockGroup conditions
-    for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
-        block_step!(model[id], model)
-        try
-            model[id].avg_hh_income = mean([a.income for a in agents_in_position(model[id].pos, model) if a isa HHAgent])
-        catch  #if not incomes_bg:  # i.e. no households reside in block group
-            model[id].avg_hh_income = NaN
+    @timeit tmr "BG Update" begin
+        for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
+            block_step!(model[id], model)
+            """
+            try
+                model[id].avg_hh_income = mean([a.income for a in agents_in_position(model[id].pos, model) if a isa HHAgent])
+            catch  #if not incomes_bg:  # i.e. no households reside in block group
+                model[id].avg_hh_income = NaN
+            end
+        """
         end
-         
     end
-    """
     @timeit tmr "Landscape Statistics" begin
         CHANCE_C.LandscapeStatistics(model)
         model.total_population = sum([a.population for a in allagents(model) if a isa HHAgent])

@@ -10,6 +10,10 @@ function ExistingAgentResampler(agent::HHAgent, model::ABM; perc_move = 0.10)
     #Update number of agents moving 
     setproperty!(agent, :n_move, no_of_agents_moving)
     setproperty!(agent, :n_stay, agent.n_stay - no_of_agents_moving)
+    #Update HHagent occupation categories
+    agent.occ_low -= agents_moving[1]
+    agent.occ_mid -= agents_moving[2]
+    agent.occ_high -= agents_moving[3]
     #Update occupied and available_units for associated Houses
     house_agents = [a for a in agents_in_position(agent, model) if a isa House]
     for house in house_agents
@@ -64,7 +68,7 @@ function calc_utility(agent::BlockGroup, model::ABM; anova_coef = [-121428, 2947
     model.hh_utilities[agent.id,:,:] = repeat([util * 0.75, util, util * 1.25], 1, 3)'
 end 
 
-## Functions to update HHAgent and House attributes after Agent Sorting
+## Functions to update Agent attributes after Agent Sorting
 
 function relo_update!(agent::HHAgent, relo_mat::Array)
     b_g = agent.bg_id
@@ -75,7 +79,7 @@ function relo_update!(agent::HHAgent, relo_mat::Array)
 
     new_pop = agent.occ_low + agent.occ_mid + agent.occ_high
 
-    setproperty!(agent, :population, new_pop)
+    setproperty!(agent, :population, new_pop * agent.no_hhs_per_agent * agent.hh_size)
     setproperty!(agent, :n_move, 0)
     setproperty!(agent, :n_stay, new_pop)
 
@@ -91,6 +95,7 @@ function relo_update!(agent::House, relo_mat::Array)
 
     @assert agent.occupied_units + agent.available_units == agent.capacity
 end
+
 
 """
 functions NewAgentLocation and ExistingAgentLocation in the python version of CHANCE-C are recreated with function AgentLocation. 

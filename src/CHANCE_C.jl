@@ -17,6 +17,7 @@ export
     default_df,
     default_gev,
     agent_step!,
+    relo_update!,
     block_step!,
     model_step!,
     step!,

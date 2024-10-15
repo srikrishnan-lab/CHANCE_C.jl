@@ -2,7 +2,7 @@
 Housing Market could probably be simplified using a group-split-combine scheme instead of iterating over agents
 """
 
-function AgentMigration(abm::ABM; growth_rate = 0.01)
+function AgentMigration(abm::ABM; growth_rate = 0.01, hh_size = 2.7, no_hhs_per_agent = 10)
     ##Set up LP
     #Utility Matrix 
     U = abm.hh_utilities
@@ -12,7 +12,8 @@ function AgentMigration(abm::ABM; growth_rate = 0.01)
 
     #New incoming agents
     new_population = abm.total_population * growth_rate
-    new_agents = fld(new_population, c)
+    total_agents = fld(((new_population / hh_size) + fld(no_hhs_per_agent, 2)), no_hhs_per_agent)
+    new_agents = fld(total_agents, c) 
 
     m  = zeros(c) # Vector of length c
     for k in 1:c

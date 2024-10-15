@@ -28,7 +28,7 @@ mutable struct BlockGroup <: AbstractAgent
     available_units::Int64
     pop_density::Float64
     
-    demand_exceeds_supply::Vector{Bool}
+
     new_units_constructed::Int64
     avg_hh_size::Float64
     avg_home_price::Float64
@@ -36,7 +36,7 @@ mutable struct BlockGroup <: AbstractAgent
 end
 
  #row.geometry,
-function add_bg(row, no_of_years)
+function add_bg(row)
 
     new_bg = BlockGroup(Int(row.fid_1),(0,0),
     row.GEOID,row.ALAND, 
@@ -44,7 +44,7 @@ function add_bg(row, no_of_years)
     row.pop1990, row.mhi1990, row.hhsize1990,
     row.coastdist, row.cbddist, row.hhtrans1993,
     row.salesprice1993, row.salespricesf1993,
-    0,0,row.new_price,0, 0,0,0.0,repeat([false], no_of_years),0,0.0,0.0,0.0)
+    0,0,row.new_price,0, 0,0,0.0,0,0.0,0.0,0.0)
     
     return new_bg
 end
@@ -80,6 +80,7 @@ mutable struct House <: AbstractAgent
     pos::Dims{2}
     bg_id::Int64
     quality::Int64 #Housing Category: 1 => low, 2 => middle, 3 => high
+    demand_meets_supply::Vector{Bool}
     occupied_units::Int64
     available_units::Int64
     capacity::Int64

@@ -23,8 +23,23 @@ function agent_step!(agent::House, model::ABM)
 end
 
 function block_step!(agent::BlockGroup, model::ABM)
+    #BuildingDevelopment(agent, model; model.build_develop...)
+    #HousingPricing(agent, model; model.house_price...)
+    agent.population = sum([a.population for a in agents_in_position(agent, model) if a isa HHAgent])
+    agent.occupied_units = sum([a.occupied_units for a in agents_in_position(agent, model) if a isa House])
+    agent.available_units = sum([a.available_units for a in agents_in_position(agent, model) if a isa House])
+
+end
+
+function block_step!(agent::House, model::ABM)
     BuildingDevelopment(agent, model; model.build_develop...)
     HousingPricing(agent, model; model.house_price...)
+
+end
+
+function block_step!(agent::HHAgent, model::ABM)
+    #Do Nothing
+
 end
  
 
@@ -42,19 +57,13 @@ function model_step!(model::ABM)
     end
  
     #run Housing Market to move HHAgents to desired locations
-    AgentMigration(model)
-    """
+    AgentMigration(model; growth_rate = model.agent_creation[:growth_rate], hh_size = 2.7, no_hhs_per_agent = 10)
+    
     #Update BlockGroup conditions
-    for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
+    for id in Agents.schedule(model)
         block_step!(model[id], model)
-        try
-            model[id].avg_hh_income = mean([a.income for a in agents_in_position(model[id].pos, model) if a isa HHAgent])
-        catch  #if not incomes_bg:  # i.e. no households reside in block group
-            model[id].avg_hh_income = NaN
-        end
-         
     end
-    """
+    
     LandscapeStatistics(model)
     model.total_population = sum([a.population for a in allagents(model) if a isa HHAgent])
 end

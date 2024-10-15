@@ -21,7 +21,7 @@ scenario = "Baseline"
 intervention = "Baseline"
 start_year = 2018
 no_of_years = 50
-perc_growth = 0.02
+perc_growth = 0.01
 perc_move = 0.025
 house_choice_mode = "flood_mem_utility"
 flood_coef = -10.0^5
@@ -53,19 +53,18 @@ function evo_step!(model::ABM)
     @timeit tmr "Housing Market" CHANCE_C.HousingMarket(model) 
  
     #Update BlockGroup conditions
-    #@timeit tmr "BG step" begin
-    """
-    for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
-        block_step!(model[id], model)
-        try
-            model[id].avg_hh_income = mean([a.income for a in agents_in_position(model[id].pos, model) if a isa HHAgent])
-        catch  #if not incomes_bg:  # i.e. no households reside in block group
-            model[id].avg_hh_income = NaN
+    @timeit tmr "BG Step" begin
+    
+        for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
+            block_step!(model[id], model)
+            try
+                model[id].avg_hh_income = mean([a.income for a in agents_in_position(model[id].pos, model) if a isa HHAgent])
+            catch  #if not incomes_bg:  # i.e. no households reside in block group
+                model[id].avg_hh_income = NaN
+            end
+            
         end
-         
     end
-    #end
-    """
     @timeit tmr "Landscape Statistics" begin
         CHANCE_C.LandscapeStatistics(model)
         model.total_population = sum([a.population for a in allagents(model) if a isa BlockGroup])
@@ -105,4 +104,4 @@ adf, _ = run!(balt_abm, dummystep, evo_step!, 50; adata)
 #show(tmr)
 
 #Save df
-CSV.write(joinpath(@__DIR__,"dataframes/adf_balt_nobuild.csv"), adf)
+CSV.write(joinpath(@__DIR__,"dataframes/adf_balt.csv"), adf)

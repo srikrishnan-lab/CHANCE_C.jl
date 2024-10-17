@@ -23,6 +23,7 @@ pop_change(agent) = (agent.population - agent.pop90) / agent.pop90
 #get income
 bg_inc(agent) = sum([a.income for a in agents_in_position(agent, model) if a isa HHAgent])
 
+<<<<<<< HEAD
 ##
 #Grab surge events at each time step
 function flood_record(model::ABM)
@@ -55,3 +56,7 @@ function total_fld_area(model::ABM)
         return fld_area
     end
 end
+=======
+#get average house price 
+avg_price(agent) = agent.new_price * agent.population
+>>>>>>> main

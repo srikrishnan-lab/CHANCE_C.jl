@@ -2,10 +2,19 @@
 import Pkg
 Pkg.activate(dirname(@__DIR__))
 Pkg.instantiate()
+<<<<<<< HEAD
 
 include(joinpath(dirname(@__DIR__), "src/CHANCE_C.jl"))
 using .CHANCE_C #add period since module is local to repository
 using CSV, DataFrames
+=======
+
+include("../src/CHANCE_C.jl")
+using .CHANCE_C
+
+#Collect data during model evolution
+include("../src/data_collect.jl")
+>>>>>>> main
 
 
 ## Load input Data
@@ -15,6 +24,7 @@ balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_i
 #import functions to collect data 
 include(joinpath(dirname(@__DIR__), "src/data_collect.jl"))
 using Plots
+using Statistics
 
 ## Set input parameters 
 scenario = "Baseline"
@@ -113,7 +123,39 @@ Plots.ylims!(-10,100)
 Plots.xlabel!("Model Year")
 Plots.ylabel!("% Change in Population")
 
+<<<<<<< HEAD
 #create subplot
 levee_results = Plots.plot(surge_levee, flood_dense_levee, pop_avoid_levee, layout = (3,1), dpi = 300, size = (500,600))
+=======
+savefig(pop_disamenity, "test/Figures/disamenity_pop_change.png")
 
+
+### For disamenity and assessing home prices### 
+disamenity_coef = [0 -10^3 -10^4 -10^5 -10^6 -10^7 -10^8]
+
+disamenity_abms = [Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
+ house_choice_mode = "simple_flood_utility", flood_coefficient = i) for i in disamenity_coef]
+>>>>>>> main
+
+adata = [(avg_price, sum, f_bgs), (avg_price, sum, nf_bgs), (:population, sum, f_bgs), (:population, sum, nf_bgs)]
+
+adf_dis, _ = ensemblerun!(disamenity_abms, dummystep, model_step!, no_of_years; adata)
+
+#Plot results
+flood_avg_price = adf_dis.sum_avg_price_f_bgs ./ adf_dis.sum_population_f_bgs
+nf_avg_price = adf_dis.sum_avg_price_nf_bgs ./ adf_dis.sum_population_nf_bgs
+
+disam_col = cgrad(:blues, 7, categorical = true)
+pop_disamenity = Plots.plot(adf_dis.step, nf_avg_price, group = adf_dis.ensemble,
+linecolor = [disam_col[1] disam_col[2] disam_col[3] disam_col[4] disam_col[5] disam_col[6] disam_col[7]], ls = :solid,
+label = disamenity_coef, lw = 2.5)
+
+Plots.plot!(adf_dis.step, flood_avg_price, group = adf_dis.ensemble, 
+linecolor = [disam_col[1] disam_col[2] disam_col[3] disam_col[4] disam_col[5] disam_col[6] disam_col[7]], ls = :dash,
+ label = false, lw = 2.5)
+
+Plots.xlabel!("Model Year")
+Plots.ylabel!("Average Home Price")
+
+savefig(pop_disamenity, "test/Figures/disamenity_home_price.png")
 

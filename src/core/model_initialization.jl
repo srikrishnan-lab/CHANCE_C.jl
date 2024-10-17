@@ -95,7 +95,7 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
 
     #Create Household agents and add to block groups
     housing_df = DataFrame(name = Any[], no_hh_agents  = Any[], population = Int64[], average_income = Float64[], avg_hh_size = Float64[], 
-    pop_density = Float64[], occupied_units = Int64[], available_units = Int64[], demand_exceeds_supply = Bool[])
+    pop_density = Float64[], occupied_units = Int64[], available_units = Int64[])
 
     for bg in collect(allagents(model))
         #Assign BG flood area value based on 100 year event (7th column of matrix is 100 yr event)
@@ -103,8 +103,8 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
         
         if bg.hhsize90 != 0.0 && isfinite(bg.hhsize90)
             no_of_hhs = round(bg.pop90 / bg.hhsize90)
-            no_of_agents = fld(fld(no_of_hhs + no_hhs_per_agent, 2), no_hhs_per_agent) #division with rounding to nearest integer
-
+            #no_of_agents = fld(fld(no_of_hhs + no_hhs_per_agent, 2), no_hhs_per_agent) #division with rounding to nearest integer
+            no_of_agents = fld(no_of_hhs, no_hhs_per_agent)
             #bg.population = Int(round(no_of_agents * no_hhs_per_agent * bg.hhsize90))
             bg.population = bg.pop90
 
@@ -112,8 +112,8 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
             bg.hhsize90 = median(skipmissing(model.df.hhsize1990))
 
             no_of_hhs = round(bg.pop90 / bg.hhsize90)
-            no_of_agents = fld(fld(no_of_hhs + no_hhs_per_agent, 2), no_hhs_per_agent) #division with rounding to nearest integer
-
+            #no_of_agents = fld(fld(no_of_hhs + no_hhs_per_agent, 2), no_hhs_per_agent) #division with rounding to nearest integer
+            no_of_agents = fld(no_of_hhs, no_hhs_per_agent)
             #bg.population = Int(round(no_of_agents * no_hhs_per_agent * bg.hhsize90))
             bg.population = bg.pop90
         end
@@ -145,7 +145,7 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
         bg.pop_density = bg.population / bg.area 
         
         #add to dataframe 
-        push!(housing_df, [bg.id, no_of_hhs, bg.population, bg.avg_hh_income, bg.avg_hh_size, bg.pop_density, bg.occupied_units, bg.available_units, bg.demand_exceeds_supply[1]])
+        push!(housing_df, [bg.id, no_of_hhs, bg.population, bg.avg_hh_income, bg.avg_hh_size, bg.pop_density, bg.occupied_units, bg.available_units])
     end
     
 

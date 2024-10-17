@@ -12,7 +12,7 @@ using CSV, DataFrames
 balt_base = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_base.csv")))
 balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_levee.csv")))
 
-adf_old = DataFrame(CSV.File(joinpath(@__DIR__, "dataframes/adf_balt_nobuild_v1.csv")))
+adf_old = DataFrame(CSV.File(joinpath(@__DIR__, "dataframes/adf_balt_v1.csv")))
 
 #import functions to collect data 
 include(joinpath(dirname(@__DIR__), "src/data_collect.jl"))
@@ -43,18 +43,29 @@ pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coef
  flood_mem = flood_mem, fixed_effect = fixed_effect, seed = 1897)
 
 adata = [(:population, sum, f_bgs), (:pop90, sum, f_bgs), (:population, sum, nf_bgs), (:pop90, sum, nf_bgs)]
+mdata = [flood_scenario, flood_record, total_fld_area]
 
-
-adf_new, _ = run!(new_abm, no_of_years; adata)
+adf_new, mdf_new = run!(new_abm, no_of_years; adata, mdata)
 
 
 #Plot results
+
+surge_base = Plots.plot(mdf_new.time[2:51], mdf_new.flood_record[2:51], linecolor = :black, lw = 4, legend = false)
+Plots.ylims!(0.5,4)
+Plots.xlabel!("Time (years)")
+Plots.ylabel!("Max Flood Depth (m)")
+
 flood_pop_change = 100 .* (adf_new.sum_population_f_bgs .- adf_new.sum_pop90_f_bgs) ./ adf_new.sum_pop90_f_bgs
 nf_pop_change = 100 .* (adf_new.sum_population_nf_bgs .- adf_new.sum_pop90_nf_bgs) ./ adf_new.sum_pop90_nf_bgs
 
-plot_compare = Plots.plot(adf_new.time, nf_pop_change)
-Plots.plot!(adf_new.time, flood_pop_change)
+plot_compare = Plots.plot(adf_new.time, flood_pop_change, lw = 4, label = "Floodplain")
+Plots.plot!(adf_new.time, nf_pop_change, lw = 4, label = "Outside Floodplain")
+Plots.xlabel!("Time (years)")
+Plots.ylabel!("% Change in Population")
 
+test_evo = Plots.plot(surge_base, plot_compare, layout = (2,1), dpi = 300, size = (700,600))
+
+savefig(test_evo, joinpath(@__DIR__,"Figures/model_test_run.png"))
 
 
 flood_pop_change_old = 100 .* (adf_old.sum_population_f_bgs .- adf_old.sum_pop90_f_bgs) ./ adf_old.sum_pop90_f_bgs

@@ -9,7 +9,7 @@ include(joinpath(dirname(@__DIR__), "src/CHANCE_C.jl"))
 using .CHANCE_C #add period since module is local to repository
 using CSV, DataFrames
 using Agents
-
+using BenchmarkPlots, StatsPlots
 
 ## Load input Data
 balt_base = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/surge_area_baltimore_base.csv")))
@@ -37,15 +37,8 @@ function evo_step!(model::ABM)
     
     #Update BlockGroup conditions
     @timeit tmr "BG Update" begin
-        for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
-            block_step!(model[id], model)
-            """
-            try
-                model[id].avg_hh_income = mean([a.income for a in agents_in_position(model[id].pos, model) if a isa HHAgent])
-            catch  #if not incomes_bg:  # i.e. no households reside in block group
-                model[id].avg_hh_income = NaN
-            end
-        """
+        for id in Agents.schedule(model)
+            CHANCE_C.block_step!(model[id], model)
         end
     end
     @timeit tmr "Landscape Statistics" begin
@@ -75,7 +68,7 @@ fixed_effect = 0
 
 balt_abm=Simulator(default_df, balt_base, balt_levee, model_evolve; slr_scen = slr_scen, slr_rate = slr_rate, no_of_years = no_of_years,
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
- flood_mem = flood_mem, fixed_effect = fixed_effect)
+flood_mem = flood_mem, fixed_effect = fixed_effect)
 
 step!(balt_abm, no_of_years)
 show(tmr)
@@ -85,6 +78,8 @@ reset_timer!(tmr)
 ##Performance Measure
 b = @benchmarkable step!(balt_abm, $no_of_years) setup=(balt_abm=Simulator(default_df, balt_base, balt_levee, model_evolve; slr_scen = slr_scen, slr_rate = slr_rate, no_of_years = no_of_years,
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
- flood_mem = flood_mem, fixed_effect = fixed_effect)) seconds=600 evals=1
+ flood_mem = flood_mem, fixed_effect = fixed_effect)) seconds=600 evals=1 samples = 20
 
-run(b)
+v2_time = run(b)
+
+BenchmarkTools.save(joinpath(@__DIR__, "benchmarks/time_v2.json"), v2_time)

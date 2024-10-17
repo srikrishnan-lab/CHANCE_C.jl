@@ -52,7 +52,7 @@ function model_step!(model::ABM)
     #create new agents
     #NewAgentCreation(model; model.agent_creation...)
     #Determine relocating HHAgents and potential moving locations
-    for id in Agents.schedule(model)
+    for id in collect(Agents.schedule(model))
         agent_step!(model[id],model)
     end
  
@@ -60,7 +60,7 @@ function model_step!(model::ABM)
     AgentMigration(model; growth_rate = model.agent_creation[:growth_rate], hh_size = 2.7, no_hhs_per_agent = 10)
     
     #Update BlockGroup conditions
-    for id in Agents.schedule(model)
+    for id in collect(Agents.schedule(model))
         block_step!(model[id], model)
     end
     

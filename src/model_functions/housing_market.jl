@@ -12,7 +12,8 @@ function AgentMigration(abm::ABM; growth_rate = 0.01, hh_size = 2.7, no_hhs_per_
 
     #New incoming agents
     new_population = abm.total_population * growth_rate
-    total_agents = fld(((new_population / hh_size) + fld(no_hhs_per_agent, 2)), no_hhs_per_agent)
+    #total_agents = fld(((new_population / hh_size) + fld(no_hhs_per_agent, 2)), no_hhs_per_agent)
+    total_agents = fld(round(new_population / hh_size), no_hhs_per_agent)
     new_agents = fld(total_agents, c) 
 
     m  = zeros(c) # Vector of length c
@@ -21,7 +22,7 @@ function AgentMigration(abm::ABM; growth_rate = 0.01, hh_size = 2.7, no_hhs_per_
     end
 
     A = zeros(n,q) # n x q matrix
-    for id in filter!(id -> abm[id] isa CHANCE_C.House, collect(Agents.schedule(abm)))
+    for id in filter!(id -> abm[id] isa House, collect(Agents.schedule(abm)))
         A[abm[id].bg_id, abm[id].quality] = abm[id].available_units
     end
 
@@ -29,7 +30,11 @@ function AgentMigration(abm::ABM; growth_rate = 0.01, hh_size = 2.7, no_hhs_per_
     Z = zeros(n,q,c)
     for j in 1:q
         for k in 1:c
-            Z[:,j,k] = repeat([abs(j-k) * 50000], n)
+            if j > k #Higher quality House than income class
+                Z[:,j,k] = repeat([abs(j-k) * 100000], n)
+            else
+                Z[:,j,k] = repeat([abs(j-k) * 50000], n)
+            end
         end
     end
 

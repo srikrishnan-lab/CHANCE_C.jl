@@ -1,6 +1,8 @@
 
 ### LP Representation 
 #function HousingMarket
+import Pkg
+Pkg.activate(dirname(@__DIR__))
 
 include(joinpath(dirname(@__DIR__), "src/CHANCE_C.jl"))
 using .CHANCE_C #add period since module is local to repository
@@ -39,7 +41,7 @@ pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coef
 tmr = TimerOutput()
 
 #Run Agent Sampler 
-function agent_migration(abm::ABM; growth_rate = 0.01)
+function agent_migration(abm::ABM; growth_rate = 0.01, hh_size = 2.7, no_hhs_per_agent = 10)
     abm.tick += 1
     for id in Agents.schedule(abm)
         agent_step!(abm[id], abm)
@@ -54,7 +56,8 @@ function agent_migration(abm::ABM; growth_rate = 0.01)
 
         #New incoming agents
         new_population = abm.total_population * growth_rate
-        new_agents = fld(new_population, c)
+        total_agents = fld(((new_population / hh_size) + fld(no_hhs_per_agent, 2)), no_hhs_per_agent)
+        new_agents = fld(total_agents, c) 
 
         m  = zeros(c) # Vector of length c
         for k in 1:c
@@ -101,7 +104,7 @@ function agent_migration(abm::ABM; growth_rate = 0.01)
     end
 end
 
-step!(balt_abm, 5)
+step!(balt_abm, 45)
 agent_migration(balt_abm)
 show(tmr)
 reset_timer!(tmr)
@@ -142,7 +145,12 @@ end
 Z = zeros(n,q,c)
 for j in 1:q
     for k in 1:c
-        Z[:,j,k] = repeat([abs(j-k) * 50000], n)
+        if j > k #Higher quality House than income class
+            Z[:,j,k] = repeat([abs(j-k) * 100000], n)
+        else
+            Z[:,j,k] = repeat([abs(j-k) * 50000], n)
+        end
+        
     end
 end
 
@@ -165,3 +173,10 @@ for id in filter!(id -> balt_abm[id] isa HHAgent || balt_abm[id] isa House, coll
     relo_update!(balt_abm[id], ReloMat)
 end
 
+
+a_gent = balt_abm[5385]
+a_gent.occ_low + a_gent.occ_mid + a_gent.occ_high
+a_gent.n_move
+a_gent.n_stay
+
+ReloMat[267,:,:]

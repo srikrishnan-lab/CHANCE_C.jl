@@ -70,6 +70,7 @@ function evo_step!(model::ABM)
         model.total_population = sum([a.population for a in allagents(model) if a isa BlockGroup])
     end
 end
+
 ### Simple measure of model performance ###
 balt_abm=Simulator(default_df, balt_base, balt_levee; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
@@ -82,9 +83,10 @@ reset_timer!(tmr)
 ##Performance Measure 
 b = @benchmarkable step!(balt_abm, $dummystep, $evo_step!, $no_of_years) setup=(balt_abm=Simulator(default_df, balt_base, balt_levee; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
- flood_mem = flood_mem, fixed_effect = fixed_effect)) seconds=600 evals=1
+ flood_mem = flood_mem, fixed_effect = fixed_effect)) seconds=1800 evals=1 samples = 20
 
-run(b)
+v1_1_time = run(b)
+BenchmarkTools.save(joinpath(@__DIR__, "benchmarks/time_v1-1.json"), v1_1_time)
 
 
 

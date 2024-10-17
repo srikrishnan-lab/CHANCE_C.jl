@@ -23,12 +23,12 @@ export
     ensemblerun!,
     levee_breach,
     m_to_ft,
-    breach_occur
-    #AgentLocation,
-    #HousingMarket,
+    breach_occur,
+    NewAgentCreation,
+    HousingMarket,
     #BuildingDevelopment,
     #HousingPricing,
-    #LandscapeStatistics
+    LandscapeStatistics
 
 #import Agent Types and Flood Dynamics Functions
 include("core/agent_structs.jl")

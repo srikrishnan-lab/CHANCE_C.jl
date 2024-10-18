@@ -104,7 +104,7 @@ function agent_migration(abm::ABM; growth_rate = 0.01, hh_size = 2.7, no_hhs_per
     end
 end
 
-step!(balt_abm, 45)
+step!(balt_abm, 31)
 agent_migration(balt_abm)
 show(tmr)
 reset_timer!(tmr)
@@ -131,9 +131,14 @@ n = size(U)[1]
 q = size(U)[2]
 c = size(U)[3]
 
+new_population = balt_abm.total_population * 0.01
+#total_agents = fld(((new_population / hh_size) + fld(no_hhs_per_agent, 2)), no_hhs_per_agent)
+total_agents = fld(round(new_population / 2.7), 10)
+new_agents = fld(total_agents, c) 
+
 m  = zeros(c) # Vector of length c
 for k in 1:c
-    m[k] = sum([a.n_move for a in allagents(balt_abm) if a isa HHAgent && a.inc_cat == k])
+    m[k] = sum([a.n_move for a in allagents(balt_abm) if a isa HHAgent && a.inc_cat == k]) + new_agents
 end
 
 A = zeros(n,q) # n x q matrix

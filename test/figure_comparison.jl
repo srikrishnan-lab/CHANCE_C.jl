@@ -58,8 +58,8 @@ Plots.ylabel!("Max Flood Depth (m)")
 flood_pop_change = 100 .* (adf_new.sum_population_f_bgs .- adf_new.sum_pop90_f_bgs) ./ adf_new.sum_pop90_f_bgs
 nf_pop_change = 100 .* (adf_new.sum_population_nf_bgs .- adf_new.sum_pop90_nf_bgs) ./ adf_new.sum_pop90_nf_bgs
 
-plot_compare = Plots.plot(adf_new.time, flood_pop_change, lw = 4, label = "Floodplain")
-Plots.plot!(adf_new.time, nf_pop_change, lw = 4, label = "Outside Floodplain")
+plot_compare = Plots.plot(adf_new.time, flood_pop_change, lw = 2.5, label = "Floodplain")
+Plots.plot!(adf_new.time, nf_pop_change, lw = 2.5, label = "Outside Floodplain")
 Plots.xlabel!("Time (years)")
 Plots.ylabel!("% Change in Population")
 

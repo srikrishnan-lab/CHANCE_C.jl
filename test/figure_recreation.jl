@@ -2,19 +2,10 @@
 import Pkg
 Pkg.activate(dirname(@__DIR__))
 Pkg.instantiate()
-<<<<<<< HEAD
 
 include(joinpath(dirname(@__DIR__), "src/CHANCE_C.jl"))
 using .CHANCE_C #add period since module is local to repository
 using CSV, DataFrames
-=======
-
-include("../src/CHANCE_C.jl")
-using .CHANCE_C
-
-#Collect data during model evolution
-include("../src/data_collect.jl")
->>>>>>> main
 
 
 ## Load input Data
@@ -123,19 +114,8 @@ Plots.ylims!(-10,100)
 Plots.xlabel!("Model Year")
 Plots.ylabel!("% Change in Population")
 
-<<<<<<< HEAD
 #create subplot
 levee_results = Plots.plot(surge_levee, flood_dense_levee, pop_avoid_levee, layout = (3,1), dpi = 300, size = (500,600))
-=======
-savefig(pop_disamenity, "test/Figures/disamenity_pop_change.png")
-
-
-### For disamenity and assessing home prices### 
-disamenity_coef = [0 -10^3 -10^4 -10^5 -10^6 -10^7 -10^8]
-
-disamenity_abms = [Simulator(scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
- house_choice_mode = "simple_flood_utility", flood_coefficient = i) for i in disamenity_coef]
->>>>>>> main
 
 adata = [(avg_price, sum, f_bgs), (avg_price, sum, nf_bgs), (:population, sum, f_bgs), (:population, sum, nf_bgs)]
 

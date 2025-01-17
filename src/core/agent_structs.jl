@@ -1,9 +1,7 @@
 using Agents
 
-mutable struct HHAgent <: AbstractAgent
+@agent struct HHAgent(GridAgent{2})
     #Attributes
-    id::Int64
-    pos::Dims{2}
     bg_id::Int64
     no_hhs_per_agent::Int64
     hh_size::Int64
@@ -20,10 +18,8 @@ mutable struct HHAgent <: AbstractAgent
 end
 
 
-mutable struct BlockGroup <: AbstractAgent
+@agent struct BlockGroup(GridAgent{2})
     #Attributes
-    id::Int64
-    pos::Dims{2}
     county::Int64
     tract::Int64
     blkgrpce::Int64
@@ -71,10 +67,8 @@ function add_bg(row, no_of_years)
 end
 
 #Create Agent Struct to store unassigned/relocating agents 
-mutable struct Queue <: AbstractAgent
+@agent struct Queue(GridAgent{2})
     #Attributes
-    id::Int64
-    pos::Dims{2}
     type::Symbol
 end
 

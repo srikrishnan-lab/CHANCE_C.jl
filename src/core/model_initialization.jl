@@ -25,7 +25,7 @@ mutable struct Properties{df<:DataFrame, scen<:String, itv<:String, t_p<:Int64, 
     tick::tick
 end
 
-function Simulator(bg_df, base_df, levee_df; slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], initial_vacancy = 0.20, 
+function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], initial_vacancy = 0.20, 
     scenario = "Baseline",intervention = "Baseline",start_year = 2018, no_of_years = 10, 
     no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33,
     hh_size = 2.7, pop_growth_mode = "perc" , pop_growth_perc = .01, 
@@ -75,6 +75,7 @@ function Simulator(bg_df, base_df, levee_df; slr_scen = "high", slr_rate = [3.03
         Union{BlockGroup,HHAgent,Queue},
         space,
         scheduler = Schedulers.ByType((HHAgent, BlockGroup, Queue), false),
+        model_step! = model_evolve,
         properties = parameters,
         rng = MersenneTwister(seed),
         warn = false,
@@ -121,11 +122,11 @@ function Simulator(bg_df, base_df, levee_df; slr_scen = "high", slr_rate = [3.03
 
         for a in 1:no_of_agents
             # indicate whether agent avoids flood zone (used in "simple avoidance utility" model)
-            agent_avoid = rand(model.rng,Uniform(0,1)) <= simple_avoidance_perc ? true : false
+            agent_avoid = rand(abmrng(model),Uniform(0,1)) <= simple_avoidance_perc ? true : false
 
             #Add agent to model
-            add_agent_pos!(HHAgent(nextid(model), bg.pos, bg.id, no_hhs_per_agent, Int(round(bg.hhsize90)), 
-            Float64(bg.mhi90), house_budget_mode, model.start_year, simple_avoidance_perc, agent_avoid, budget, hh_budget_perc), model)
+            add_agent!(bg.pos, HHAgent, model, bg.id, no_hhs_per_agent, Int(round(bg.hhsize90)), 
+            Float64(bg.mhi90), house_budget_mode, model.start_year, simple_avoidance_perc, agent_avoid, budget, hh_budget_perc)
         end
         #Calculate BG statistics based on agent properties within each BG
         #Future: Set income/size to NaN if avg == 0 (no agents in block group) 

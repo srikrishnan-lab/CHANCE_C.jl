@@ -38,6 +38,7 @@ price_increase_perc = .05
 
 ### Intialize Model ###
 #Define relevant parameters
+model_evolve = CHANCE_C.model_step!
 scenario = "Baseline"
 intervention = "Baseline"
 start_year = 2018
@@ -56,7 +57,7 @@ flood_mem = 10
 fixed_effect = 0
 
 
-balt_abm = Simulator(default_df, balt_base, balt_levee; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
+balt_abm = Simulator(default_df, balt_base, balt_levee, model_evolve; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
 pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
  flood_mem = flood_mem, fixed_effect = fixed_effect)
 

@@ -8,8 +8,6 @@ include("flood_dynamics.jl")
 mutable struct Properties{df<:DataFrame, scen<:String, itv<:String, t_p<:Int64, a_c<:Dict, r_s<:Dict, a_r<:Dict, b_d<:Dict,
      h_p<:Dict, u_hhs<:DataFrame, sy<:Int64, no_y<:Int64, f_mat<:Array, f_dict<:Dict, tick<:Int64}
     df::df
-    scenario::scen
-    intervention::itv
     total_population::t_p 
     agent_creation::a_c
     relo_sampler::r_s
@@ -17,7 +15,6 @@ mutable struct Properties{df<:DataFrame, scen<:String, itv<:String, t_p<:Int64, 
     build_develop::b_d
     house_price::h_p
     hh_utilities_df::u_hhs
-    start_year::sy
     no_of_years::no_y
     #Additional properties for Flood Dynamics
     flood_matrix::f_mat
@@ -25,9 +22,8 @@ mutable struct Properties{df<:DataFrame, scen<:String, itv<:String, t_p<:Int64, 
     tick::tick
 end
 
-function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], initial_vacancy = 0.20, 
-    scenario = "Baseline",intervention = "Baseline",start_year = 2018, no_of_years = 10, 
-    no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33,
+function Simulator(bg_df, pop_df, base_df, levee_df, model_evolve; slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2],
+    no_of_years = 10, no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33,
     hh_size = 2.7, pop_growth_mode = "perc" , pop_growth_perc = .01, 
     inc_growth_mode = "random_agent_replication", pop_growth_inc_perc = .90, inc_growth_perc = .05, 
     bld_growth_perc = .01, perc_move = 0.025, perc_move_mode = "random", house_choice_mode = "simple_avoidance_utility", 
@@ -65,11 +61,12 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
     #HousingPricing
     house_price = Dict(:housing_pricing_mode => housing_pricing_mode, :price_increase_perc => price_increase_perc)
 
-    #Set space for model
-    space = GridSpace((35,35))
+    #Set space for model 
+    width = Int(ceil(sqrt(size(bg_df)[1])))
+    space = GridSpace((width,width))
 
-    parameters = Properties(new_df, scenario, intervention, 0, agent_creation, averse_move, agent_relocate, build_develop, house_price,
-     DataFrame(hh_id = Int64[], bg_id = Int64[], bg_utility = Float64[]), start_year, no_of_years, f_matrix, f_dict, 0)
+    parameters = Properties(new_df, 0, agent_creation, averse_move, agent_relocate, build_develop, house_price,
+     DataFrame(hh_id = Int64[], bg_id = Int64[], bg_utility = Float64[]), no_of_years, f_matrix, f_dict, 0)
 
     model = ABM(
         Union{BlockGroup,HHAgent,Queue},
@@ -92,52 +89,28 @@ function Simulator(bg_df, base_df, levee_df, model_evolve; slr_scen = "high", sl
     pop_density = Float64[], occupied_units = Int64[], available_units = Int64[], demand_exceeds_supply = Bool[])
 
     for bg in collect(allagents(model))
-        #Assign BG flood area value based on 100 year event (7th column of matrix is 100 yr event)
-        bg.perc_fld_area = model.flood_matrix[bg.id,7,1]
-        
-        if bg.hhsize90 != 0.0 && isfinite(bg.hhsize90)
-            no_of_hhs = round(bg.pop90 / bg.hhsize90)
-            no_of_agents = fld(fld(no_of_hhs + no_hhs_per_agent, 2), no_hhs_per_agent) #division with rounding to nearest integer
+        dict, agent_df = agent_bin_cont(bg.GEOID, pop_df; no_hhs_per_agent=no_hhs_per_agent, group_col = group_col, cutoffs = cutoff_dict,
+         house_budget_mode = house_budget_mode, hh_budget_perc = 0.33)
 
-            #bg.population = Int(round(no_of_agents * no_hhs_per_agent * bg.hhsize90))
-            bg.population = bg.pop90
-
-        else  # if hh size is 0.0 or nan (i.e., data error) using median household size for population
-            bg.hhsize90 = median(skipmissing(model.df.hhsize1990))
-
-            no_of_hhs = round(bg.pop90 / bg.hhsize90)
-            no_of_agents = fld(fld(no_of_hhs + no_hhs_per_agent, 2), no_hhs_per_agent) #division with rounding to nearest integer
-
-            #bg.population = Int(round(no_of_agents * no_hhs_per_agent * bg.hhsize90))
-            bg.population = bg.pop90
-        end
-
-        #Calculate HHAgent budget (consider making this section into a separate function using HHAgent attributes
-        #Ok for now since HHAgents have same income based on BG and income doesn't change)
-        if house_budget_mode == "rhea"
-            budget = exp(4.96 + (0.63 * log(Float64(bg.mhi90))))
-        elseif house_budget_mode == "perc"
-            budget = Float64(bg.mhi90) * hh_budget_perc
-        end
-
-        for a in 1:no_of_agents
+        for row in Tables.namedtupleiterator(agent_df)
             # indicate whether agent avoids flood zone (used in "simple avoidance utility" model)
             agent_avoid = rand(abmrng(model),Uniform(0,1)) <= simple_avoidance_perc ? true : false
 
             #Add agent to model
-            add_agent!(bg.pos, HHAgent, model, bg.id, no_hhs_per_agent, Int(round(bg.hhsize90)), 
-            Float64(bg.mhi90), house_budget_mode, model.start_year, simple_avoidance_perc, agent_avoid, budget, hh_budget_perc)
+            add_agent!(bg.pos, HHAgent, model, bg.id, row.nrow, row.cat, row.race, Int(round(row.avg_hh_size)), 
+            Float64(row.avg_income), house_budget_mode, model.tick, simple_avoidance_perc, agent_avoid, row.budget, hh_budget_perc)
         end
         #Calculate BG statistics based on agent properties within each BG
         #Future: Set income/size to NaN if avg == 0 (no agents in block group) 
-        bg.avg_hh_income = mean([a.income for a in agents_in_position(bg.pos, model) if a isa HHAgent])
-        bg.avg_hh_size = mean([a.hh_size for a in agents_in_position(bg.pos, model) if a isa HHAgent])
+        bg.avg_hh_income = dict[:avg_inc]
+        bg.avg_hh_size = dict[:avg_hh_size]
 
+        bg.population = dict[:total_pop]
         bg.pop_density = bg.population / bg.area
         #add occupied unit to associated block group node 
-        bg.occupied_units = no_of_agents
+        bg.occupied_units = dict[:occupied]
         #Calculate available_units for associated block group 
-        bg.available_units = round((initial_vacancy * no_of_agents) / (1 - initial_vacancy)) 
+        bg.available_units = dict[:vacant]
         
         #add to dataframe 
         push!(housing_df, [bg.id, no_of_hhs, bg.population, bg.avg_hh_income, bg.avg_hh_size, bg.pop_density, bg.occupied_units, bg.available_units, bg.demand_exceeds_supply[1]])

@@ -1,5 +1,4 @@
 
-
 function HousingPricing(agent::BlockGroup, model::ABM; housing_pricing_mode = "simple_perc", price_increase_perc = 0.05)
     if agent.demand_exceeds_supply[model.tick]
         agent.new_price *= (1 + price_increase_perc)

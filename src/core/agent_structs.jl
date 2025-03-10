@@ -8,6 +8,7 @@ using Agents
     race::Float64
     hh_size::Int64
     income::Float64
+    utility::Dict{Int64,Float64} #bg.id (model id) => utility
     #Properties
     house_budget_mode::String
     year_of_residence::Int64
@@ -24,39 +25,27 @@ end
     area::Float64
     init_pop::Int64
     perc_fld_area::Float64
-    pop90::Int64
-    mhi90::Int64 
-    hhsize90::Float64 
+    init_mhi::Int64 
+    init_hh_size::Float64 
     coastdist::Float64 
-    cbddist::Float64 
-    hhtrans93::Float64 
-    salesprice93::Float64
-    salespricesf93::Float64
+    cbddist::Float64  
 
     population::Int64
     flood_hazard::Float64
-    new_price::Float64
+    base_utility::Union{Float64, Dict{String, Float64}}
+    current_utility::Union{Float64, Dict{String, Float64}}
+    new_price::Union{Float64, Dict{String, Float64}}
     years_since_major_flooding::Int64
-    occupied_units::Int64
-    available_units::Int64
+    occupied_units::Union{Int64, Dict{String, Int64}}
+    available_units::Union{Int64, Dict{String, Int64}}
     pop_density::Float64
-    demand_exceeds_supply::Vector{Bool}
-    new_units_constructed::Int64
+    demand_exceeds_supply::Union{Vector{Bool}, Dict{String, Vector{Bool}}}
+    new_units_constructed::Union{Int64, Dict{String, Int64}}
     avg_hh_size::Float64
     avg_home_price::Float64
     avg_hh_income::Float64    
 end
 
-function add_bg(row, no_of_years)
-
-    new_bg = BlockGroup(Int(row.fid_1),(0,0),row.GEOID, row.ALAND, 
-    row.AJWME001, 0, row.pop1990, row.mhi1990, row.hhsize1990,
-    row.coastdist, row.cbddist, row.hhtrans1993,
-    row.salesprice1993, row.salespricesf1993,
-    0,0,"no",row.new_price,0, 0,0,0.0,"no",repeat([false], no_of_years),0,0.0,0.0,0.0)
-    
-    return new_bg
-end
 
 #Create Agent Struct to store unassigned/relocating agents 
 @agent struct Queue(GridAgent{2})

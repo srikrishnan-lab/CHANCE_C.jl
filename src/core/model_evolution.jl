@@ -13,7 +13,7 @@ function agent_step!(agent::HHAgent, model::ABM)
 end
  
 function agent_step!(agent::BlockGroup, model::ABM)
-    flooded!(agent, model; mem = model.relo_sampler[:mem])
+    flooded!(agent, model; model.flood_hazard...)
     agent_prob!(agent, model; model.relo_sampler...)
 end
  
@@ -33,7 +33,7 @@ function model_step!(model::ABM)
     #clear utilities df
     empty!(model.hh_utilities_df)
     #create new agents
-    NewAgentCreation(model; model.agent_creation...)
+    #NewAgentCreation(model; model.agent_creation...)
     #Determine relocating HHAgents and potential moving locations
     for id in Agents.schedule(model)
         agent_step!(model[id],model)

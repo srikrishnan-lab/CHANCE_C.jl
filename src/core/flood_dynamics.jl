@@ -87,8 +87,10 @@ end
     #medium scenario of SL change projection for 2031 is 0.15m and 0.93m for 2130 (NOAA)
     #low scenario of SL change projection for 2031 is 0.11m and 0.41m for 2130 (NOAA)
 
-function initialize_flood(model_rng, base_df, levee_df; no_of_years = 10, slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], levee = false, 
+function initialize_flood(seed, base_df, levee_df; no_of_years = 10, slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], levee = false, 
     breach = false, breach_null = 0.45, gev_d = default_gev)
+
+    flood_rng = MersenneTwister(seed)
 
 ## Create Matrix of surge from base and levee scenario ##
     #Sort on fid_1 column. Extract only flood area values
@@ -106,7 +108,7 @@ function initialize_flood(model_rng, base_df, levee_df; no_of_years = 10, slr_sc
 
     ## Create record of flood return periods and breach events ##
     #Create GEV distribution
-    flood_record = [GEV_event(model_rng, d = gev_d) for _ in 1:no_of_years]
+    flood_record = [GEV_event(flood_rng, d = gev_d) for _ in 1:no_of_years]
     #add SLR values to flood_events 
     slr_dict = Dict(["low", "medium","high"] .=> slr_rate)
     slr_record = slr_dict[slr_scen] .* collect(1:no_of_years)
@@ -118,7 +120,7 @@ function initialize_flood(model_rng, base_df, levee_df; no_of_years = 10, slr_sc
         scen_record = Int.(ones(no_of_years) .+ 1)
         if breach
             flood_rec_ft = m_to_ft.(flood_record)
-            breach_record = breach_occur.(flood_rec_ft; null = breach_null, rng = model_rng)
+            breach_record = breach_occur.(flood_rec_ft; null = breach_null, rng = flood_rng)
             scen_record .-= breach_record
         end
     else
@@ -134,6 +136,31 @@ function initialize_flood(model_rng, base_df, levee_df; no_of_years = 10, slr_sc
 
     return flood_mat, rec_dict
 end
+
+####Flood initialization for hindcast
+## Use when historical floods events are used
+## Input should be formatted as Dataframe with Rows representing BlockGroups and Columns representing Years 
+    #(With first column being the BG GEOID column). 
+
+function flood_history(base_df; no_of_years = 10, start_year = 1980, slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2])
+    #Sort df on GEOID
+    sort!(base_df, :GEOID)
+    #Select years of interest. Subset df
+    flood_df = select(base_df,Symbol.(collect(range(start_year, start_year+no_of_years, step = 1))))
+    #Convert df to matrix
+    flood_mat = zeros(size(flood_df)[1], size(flood_df)[2], 1)
+    flood_mat[:,:,1] = Matrix(flood_df)
+
+    scen_record = Int.(ones(no_of_years))
+    #create dictionary of flood scenario and model year for each model year
+    #(This looks redundant, but done to keep the same formatting and indexing logic
+    #  as the initialize_flood function)
+    rec_dict = Dict(collect(1:no_of_years) .=> zip(scen_record, collect(1:no_of_years)))
+
+    return flood_mat, rec_dict
+end
+
+
 
 """
 #Read in flood area extent files

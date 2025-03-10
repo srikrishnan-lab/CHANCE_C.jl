@@ -7,15 +7,17 @@ Updating avg_hh_income should be in a bg specific function
 #agent.population
 
 
-function LandscapeStatistics(model::ABM)
+function LandscapeStatistics(model::ABM; bg_cat = Dict(:col =>"income_cat", :group => ["low", "medium", "high"]))
     # model BG df attributes needing updating:
-    update_df = DataFrame(id = Int64[], occupied_units = Int64[], available_units = Int64[], average_income = Float64[], new_price = Float64[])
+    update_df = DataFrame(id = Int64[], cat = String[], occupied_units = Int64[], available_units = Int64[], average_income = Float64[], market_value = Float64[])
     #Update df with collected updated BlockGroupattributes
-    push!.(Ref(update_df),[[a.id, a.occupied_units, a.available_units, a.avg_hh_income, a.new_price] for a in allagents(model) if a isa BlockGroup])
+    for cat in bg_cat[:group]
+        push!.(Ref(update_df),[[a.GEOID, cat, a.occupied_units[cat], a.available_units[cat], a.avg_hh_income, a.new_price[cat]] for a in allagents(model) if a isa BlockGroup])
+    end
     #join model df with update df
-    inter_df = dropmissing(leftjoin(model.df,update_df, on= :fid_1 => :id, makeunique=true))
+    inter_df = leftjoin(model.df,update_df, on = ["GEOID" => "id", bg_cat[:col] => "cat"], makeunique=true)
     #update model columns
-    for col in ["occupied_units", "available_units", "average_income", "new_price"]
+    for col in ["occupied_units", "available_units", "average_income", "market_value"]
         model.df[!, col] = inter_df[!, col * "_1"]
     end
 

@@ -7,34 +7,167 @@ Pkg.instantiate()
 include(joinpath(dirname(@__DIR__), "src/CHANCE_C.jl"))
 using .CHANCE_C #add period since module is local to repository
 using CSV, DataFrames
+using DataStructures
+using Statistics,StatsBase,Distributions
 using Agents
 
 using BenchmarkTools, TimerOutputs
 
-## Load input Data
-balt_base = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_base.csv")))
-balt_levee = DataFrame(CSV.File(joinpath(dirname(pwd()), "baltimore-data/model_inputs/surge_area_baltimore_levee.csv")))
+### Load input Data
+f_df = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data", "synth_flood_phil.csv")))
+
+##For BG
+#open bg file
+phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/philly_bg_2019.csv")))
+#groupby BG
+grouped_phil_bg = groupby(phil_bg, :GEOID)
+
+##load pop data
+phil_cbsa_base_pop = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data/census_data/synth_pop/pop_files/philly_cbsa_pop_0.csv")))
+#drop missing values
+dropmissing!(phil_cbsa_base_pop, :NP)
+
+#Subset to Phil. County (Not part of function)
+phil_base_pop = subset(phil_cbsa_base_pop, :county => x -> x .== 42101)
 
 
 #Define relevant parameters
-scenario = "Baseline"
-intervention = "Baseline"
-start_year = 2018
-no_of_years = 50
-perc_growth = 0.01
-perc_move = 0.025
+no_of_years = 35
+start_year = 1980
+no_hhs_per_agent=10
+grouped = true
+group_col = "adj_income_2019"
+cutoff_dict = OrderedDict("low"=> [-60000.00,25000.00], "medium"=>[25000.00,75000.00], "high"=>[75000.00, 1e7])
+bg_cat = Dict(:col =>"income_cat", :group => ["low", "medium", "high"])
+house_budget_mode = "perc"
 house_choice_mode = "flood_mem_utility"
-flood_coef = -10.0^5
-levee = false
-breach = true
-slr_scen = "medium" #Select SLR Scenario to use (choice of "low", "medium", and "high")
-slr_rate = [3.03e-3,7.878e-3,2.3e-2] #Define SLR Rate of change for each scenario ( list order is "low", "medium", and "high")
-breach_null = 0.4 
-risk_averse = 0.3 
-flood_mem = 10 
-fixed_effect = 0
+risk_averse = 0.3
+flood_mem = 10
+seed = 1500
 
 tmr = TimerOutput()
+#Define agent relocation function
+function ag_locate(agent::CHANCE_C.Queue, model::ABM; levee = false, f_e = 0.0, bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
+    budget_reduction_perc = 0.10, penalty = 50, migrate_prob = 0.05)
+
+    loc_df = copy(model.df)
+    # Create a GEOID-to-BlockGroup lookup
+    geoid_to_bg = Dict{Int64, In64}()
+    for bg in allagents(model)
+        if bg isa BlockGroup
+            geoid_to_bg[bg.GEOID] = bg.id
+        end
+    end
+    # Preallocate the DataFrame with a reasonable initial capacity
+    #bg_sample = DataFrame(hh_id = Int64[], bg_id = Int64[], GEOID = Int64[], cat = String[], bg_utility = Float64[])
+
+    # Use view or filter instead of multiple list comprehensions
+    moving_agents = sort!([a for a in agents_in_position(agent, model) if a isa HHAgent], by=a -> a.income, rev=true)
+
+    current_index = 1
+    #Preallocate some vectors to reduce memory allocations
+    hh_ids = Vector{Int64}(undef, bg_sample_size * length(moving_agents))
+    bg_ids = Vector{Int64}(undef, bg_sample_size * length(moving_agents))
+    bg_GEOID = Vector{Int64}(undef, bg_sample_size* length(moving_agents))
+    bg_cat = Vector{String}(undef, bg_sample_size* length(moving_agents))
+    bg_utilities = Vector{Float64}(undef, bg_sample_size * length(moving_agents))
+
+    for hh_agent in moving_agents
+        # Consolidate budget selection logic
+        bg_budget = if house_choice_mode == "simple_avoidance_utility"
+            hh_agent.avoidance ? 
+                subset(loc_df, :perc_fld_area => n -> n .<= 0.10) :
+                subset(loc_df, :market_value => n -> n .<= hh_agent.house_budget, skipmissing=true)
+        elseif house_choice_mode == "budget_reduction"
+            new_house_budget = hh_agent.house_budget * (1 - budget_reduction_perc)
+            hh_budget = ifelse.(loc_df.perc_fld_area .>= 0.10, new_house_budget, hh_agent.house_budget)
+            subset(loc_df, :market_value => n -> n .<= hh_budget, skipmissing=true, view = true)
+        else
+            subset(loc_df, :market_value => n -> n .<= hh_agent.house_budget, skipmissing=true, view = true)
+        end
+
+        # Use a more efficient sampling approach
+        try
+            
+            # Precompute weights to avoid repeated calculations
+            weights = ProbabilityWeights(bg_budget.available_units ./ sum(bg_budget.available_units))
+            
+            # Check for available locations more efficiently
+            valid_locations = findall(weights .> 0)
+            if isempty(valid_locations)
+                throw(ErrorException("No affordable locations with available units"))
+            end
+
+            #Sample from affordable locations based on weights
+            sample_size = min(length(valid_locations), bg_sample_size)
+            sampled_indices = sample(abmrng(model), valid_locations, sample_size, replace=false)
+    
+            #Grab utilities from sampled locations
+            #bg_sel = Iterators.filter(bg -> bg isa BlockGroup && bg.GEOID in bg_budget[sampled_indices, :GEOID], allagents(model))
+            loc_utilities = [model[geoid_to_bg[row.geoid]].current_utility[row.inc_cat] for row in eachrow(bg_budget[sampled_indices, [:GEOID, :income_cat]])]
+            #getindex.(getproperty.(bg_sel, :current_utility), bg_budget[sampled_indices, :income_cat])
+            # Find indices of block groups with better utilities than current agent location
+            current_utility = first(values(hh_agent.utility))
+            opt_locs = findall(>(current_utility), loc_utilities)
+
+            # Check if any moves are possible
+            if isempty(opt_locs)
+                throw(ErrorException("No better locations found"))
+            end
+            best_indices = sampled_indices[opt_locs]
+
+            #Append future block group properties to vectors
+            ind_length = length(best_indices)
+
+            copyto!(hh_ids, current_index, fill(hh_agent.id, ind_length), 1, ind_length)
+            copyto!(bg_ids, current_index, getproperty.(collect(bg_sel)[opt_locs], :id), 1, ind_length)
+            copyto!(bg_GEOID, current_index, bg_budget[best_indices, :GEOID], 1, ind_length)
+            copyto!(bg_cat, current_index, bg_budget[best_indices, :income_cat], 1, ind_length)
+            copyto!(bg_utilities, current_index, loc_utilities[opt_locs], 1, ind_length)
+
+            current_index += ind_length
+
+        catch
+            # Migration logic remains similar
+            if rand(abmrng(model), Binomial(1, migrate_prob)) == 1
+                last_bg = model[first(keys(hh_agent.utility))]
+                move_agent!(hh_agent, last_bg.pos, model)
+                last_bg.occupied_units[hh_agent.group] += 1
+                last_bg.available_units[hh_agent.group] -= 1
+                last_bg.population += getproperty(hh_agent, :no_hhs_per_agent) * getproperty(hh_agent, :hh_size)
+            else
+                remove_agent!(hh_agent, model)
+            end
+        end
+    end
+    
+    ##Create df from vectors, append to model properties df
+    #Remove extra undef values by using current index
+    bg_sample = DataFrame(hh_id = hh_ids[1:current_index-1], bg_id = bg_ids[1:current_index-1], 
+    GEOID = bg_GEOID[1:current_index-1], cat = bg_cat[1:current_index-1], bg_utility = bg_utilities[1:current_index-1])
+    
+    append!(model.hh_utilities_df, bg_sample)
+end
+
+#Define agent steps
+function ag_step!(agent::CHANCE_C.HHAgent, model::ABM)
+    #Do nothing  
+end
+ 
+function ag_step!(agent::CHANCE_C.BlockGroup, model::ABM)
+    CHANCE_C.flooded!(agent, model; model.flood_hazard...)
+    CHANCE_C.agent_prob!(agent, model; model.relo_sampler...)
+end
+ 
+function ag_step!(agent::CHANCE_C.Queue, model::ABM)
+    ag_locate(agent, model; model.agent_relocate...)
+end
+ 
+function bl_step!(agent::CHANCE_C.BlockGroup, model::ABM)
+    CHANCE_C.BuildingDevelopment(agent, model; model.build_develop...)
+    CHANCE_C.HousingPricing(agent, model; model.house_price...)
+end
+
 #Define model evolution
 function evo_step!(model::ABM)
     #Update Year
@@ -42,21 +175,27 @@ function evo_step!(model::ABM)
     #clear utilities df
     empty!(model.hh_utilities_df)
     #create new agents
-    @timeit tmr "New Agent Creation" CHANCE_C.NewAgentCreation(model; model.agent_creation...) 
+    #@timeit tmr "New Agent Creation" CHANCE_C.NewAgentCreation(model; model.agent_creation...) 
     #Determine relocating HHAgents and potential moving locations
-    @timeit tmr "Agent Step" begin
-        for id in Agents.schedule(model)
-            CHANCE_C.agent_step!(model[id],model)
+    @timeit tmr "BG Agent Step" begin
+        for id in filter!(id -> model[id] isa CHANCE_C.BlockGroup, collect(Agents.schedule(model)))
+            ag_step!(model[id],model)
         end
     end
+    @timeit tmr "Queue Agent Step" begin
+        for id in filter!(id -> model[id] isa CHANCE_C.Queue, collect(Agents.schedule(model)))
+            ag_step!(model[id],model)
+        end
+    end
+    """
     #run Housing Market to move HHAgents to desired locations
     @timeit tmr "Housing Market" CHANCE_C.HousingMarket(model) 
  
     #Update BlockGroup conditions
-    @timeit tmr "BG Step" begin
+    @timeit tmr "BG block Step" begin
     
-        for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))
-            block_step!(model[id], model)
+        for id in filter!(id -> model[id] isa CHANCE_C.BlockGroup, collect(Agents.schedule(model)))
+            bl_step!(model[id], model)
             try
                 model[id].avg_hh_income = mean([a.income for a in agents_in_position(model[id].pos, model) if a isa HHAgent])
             catch  #if not incomes_bg:  # i.e. no households reside in block group
@@ -69,26 +208,32 @@ function evo_step!(model::ABM)
         CHANCE_C.LandscapeStatistics(model)
         model.total_population = sum([a.population for a in allagents(model) if a isa BlockGroup])
     end
+    """
 end
 
 ### Simple measure of model performance ###
-balt_abm=Simulator(default_df, balt_base, balt_levee; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
-pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
- flood_mem = flood_mem, fixed_effect = fixed_effect)
 
-step!(balt_abm, dummystep, evo_step!, no_of_years)
+## Calculate Flood matrix and Dict for ABM input
+f_dict, f_matrix = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start_year = start_year)
+
+### Initialize ABM
+phil_abm = CHANCE_C.Simulator(phil_bg, phil_base_pop, f_dict, f_matrix, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
+house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
+risk_averse = risk_averse, flood_mem = flood_mem, seed = seed)
+
+step!(phil_abm)
 show(tmr)
 reset_timer!(tmr)
 
 ##Performance Measure 
-b = @benchmarkable step!(balt_abm, $dummystep, $evo_step!, $no_of_years) setup=(balt_abm=Simulator(default_df, balt_base, balt_levee; slr_scen = slr_scen, slr_rate = slr_rate, scenario = scenario, intervention = intervention, start_year = start_year, no_of_years = no_of_years,
-pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coefficient = flood_coef, levee = false, breach = breach, breach_null = breach_null, risk_averse = risk_averse,
- flood_mem = flood_mem, fixed_effect = fixed_effect)) seconds=1800 evals=1 samples = 20
+b = @benchmarkable step!(phil_abm) setup=(phil_abm = CHANCE_C.Simulator(phil_bg, phil_base_pop, f_dict, f_matrix, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
+house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
+risk_averse = risk_averse, flood_mem = flood_mem, seed = seed)) seconds=1800 evals=1 samples = 10
 
 v1_1_time = run(b)
 BenchmarkTools.save(joinpath(@__DIR__, "benchmarks/time_v1-1.json"), v1_1_time)
 
-
+#reset_timer!(tmr)
 
 
 
@@ -102,8 +247,4 @@ pop_growth_perc = perc_growth, house_choice_mode = house_choice_mode, flood_coef
 
 #Time data collection
 #reset_timer!(tmr)
-adf, _ = run!(balt_abm, dummystep, evo_step!, 50; adata)
-#show(tmr)
 
-#Save df
-CSV.write(joinpath(@__DIR__,"dataframes/adf_balt.csv"), adf)

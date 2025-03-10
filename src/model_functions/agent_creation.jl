@@ -67,16 +67,20 @@ function NewAgentCreation(model::ABM; growth_mode = "perc", growth_rate = 0.01, 
 
             elseif inc_growth_mode == "random_agent_replication"
 
-                for a in 1: Int(no_new_agents)
+                for _ in 1:Int(no_new_agents)
                     rand_agent = random_agent(model, x-> x isa HHAgent)
-                    hh_income = rand_agent.income
-                    hh_budget = rand_agent.house_budget
                     agent_avoid = rand(model.rng,Uniform(0,1)) <= simple_avoidance_perc ? true : false
-                    migrant = HHAgent(nextid(model), new_pos, -1, no_hhs_per_agent, Int(round(hh_size)), hh_income, house_budget_mode, model.tick, simple_avoidance_perc,
-                    agent_avoid, hh_budget, hh_budget_perc)
+                    replicate!(rand_agent, model; pos = new_pos, bg_id = -1, utility = Dict(-1 => 0), year_of_residence = model.tick, avoidance = agent_avoid)
+                    #hh_income = rand_agent.income
+                    #hh_budget = rand_agent.house_budget
+                    #agent_avoid = rand(model.rng,Uniform(0,1)) <= simple_avoidance_perc ? true : false
+                    #migrant = HHAgent(nextid(model), new_pos, -1, no_hhs_per_agent, Int(round(hh_size)), hh_income, house_budget_mode, model.tick, simple_avoidance_perc,
+                    #agent_avoid, hh_budget, hh_budget_perc)
+                    #add_agent!(new_pos, HHAgent, model, -1, row.nrow, rand_agent.group, row.race, Int(round(row.avg_hh_size)), 
+                    #Float64(row.avg_income), Dict(bg.id => bg.current_utility[row.cat]), house_budget_mode, model.tick, simple_avoidance_perc, agent_avoid, row.budget, hh_budget_perc)
 
                     ##Add agent to unassigned queue
-                    add_agent_pos!(migrant, model)
+                    #add_agent_pos!(migrant, model)
                 end
             
             end

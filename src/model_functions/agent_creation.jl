@@ -1,6 +1,65 @@
 
+function NewAgentCreation(pop_df::DataFrame, model::ABM; no_of_years = 10, growth_rate = 0.01, dist_param = [0.3, 0.4, 0.3], group_col = "adj_income_2019",
+    cutoffs = OrderedDict("low"=> [0,25000.00], "medium"=>[25000.00,75000.00], "high"=>[75000.00, 1e7]), no_hhs_per_agent = 10, house_budget_mode = "perc", hh_budget_perc = 0.33)
 
-function NewAgentCreation(model::ABM; growth_mode = "perc", growth_rate = 0.01, inc_growth_mode = "random_agent_replication",
+    ##Calculate max number of migrating agents based on initial model pop and growth rate
+    initial_pop = length([a for a in allagents(model) if a isa HHAgent])
+    final_agent_pop = initial_pop * exp(growth_rate*no_of_years)
+    migrant_pop = ceil(final_agent_pop - initial_pop)
+    ##Calculate proportion of agents from each income category
+    cat_prop = rand(abmrng(model), Dirichlet(10 .* dist_param))
+    migrant_cat_pop = ceil.(migrant_pop .* cat_prop)
+
+    ##Extract pop characteristics from pop_df
+    #Subset to only occupied households
+    pop_hh_df = subset(pop_df, :NP => x -> x .> 0.0)
+
+    #Create group labels by group col
+    pop_hh_df[:, :category] = cut(pop_hh_df[:, group_col], unique(reduce(vcat, collect(values(cutoffs)))), labels = collect(keys(cutoffs)))
+    #groupby category column 
+    pop_cat_df = groupby(pop_hh_df, :category)
+
+    #Create empty DataFrame
+    agent_df = DataFrame(nrow = Int64[], cat = String[], race = Float64[], avg_hh_size = Float64[], avg_income = Float64[])
+    for (i,sub_df) in enumerate(pop_cat_df)
+        sort!(sub_df, group_col)
+        sub_df[:,:group] = map(x->div(x,no_hhs_per_agent), 1:nrow(sub_df))
+        hh_bins = combine(groupby(sub_df, :group), nrow, :category => maximum => :cat, :RAC1P => (r -> mode(r)) => :race,  [:NP, :adj_income_2019] .=> mean .=> [:avg_hh_size, :avg_income])
+        inc_w = ProbabilityWeights(hh_bins.avg_income ./ sum(hh_bins.avg_income)) #Calculate weights based on avg income
+        append!(agent_df, hh_bins[sample(abmrng(model), 1:nrow(hh_bins), inc_w, Int(migrant_cat_pop[i]); replace = true),2:end]) #Sample rows based on migrant category count
+    end
+
+    #Calculate agent budgets
+    if house_budget_mode == "rhea"
+        agent_df.budget = exp.(4.96 .+ (0.63 .* log.(agent_df.avg_income)))
+    elseif house_budget_mode == "perc"
+        agent_df.budget = agent_df.avg_income .* (1 + hh_budget_perc)
+    end
+
+    return agent_df
+end
+
+
+function AgentMigration(model::ABM; growth_rate = 0.01)
+    if growth_rate == 0.0 #In-migration not considered
+        return #do nothing
+    else
+        migrant_ids = [a.id for a in agents_in_position(model[-1].pos, model) if a isa HHAgent]
+        no_new_agents = floor(Int64, (length([a for a in allagents(model) if a isa HHAgent]) - length(migrant_ids)) * growth_rate)
+        #Sample from migrant agent pool 
+        incoming_ids = sample(abmrng(model), migrant_ids, no_new_agents)
+        #move agents to relocation queue
+        for id in incoming_ids
+            move_agent!(model[id], model[0].pos, model)
+        end
+    end
+end
+
+
+
+### [DEPRECATED]  ###
+"""
+function NewAgentCreation_old(model::ABM; growth_mode = "perc", growth_rate = 0.01, inc_growth_mode = "random_agent_replication",
     pop_growth_inc_perc = 0.90, inc_growth_perc = 0.05, no_hhs_per_agent = 10, hh_size = 2.7,
      simple_avoidance_perc = 0.10, house_budget_mode = "rhea", hh_budget_perc = 0.33)
     #**Args**:
@@ -87,3 +146,4 @@ function NewAgentCreation(model::ABM; growth_mode = "perc", growth_rate = 0.01, 
         end
     end
 end
+"""

@@ -4,7 +4,7 @@ Housing Market could probably be simplified using a group-split-combine scheme i
 
 function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size = 10) #start with just relocating Queue
     for market_iter in 1:bg_sample_size
-        moving_agents = [id for id in reduce(vcat,ids_in_position.(getindex.(Ref(model),[0,-1]), Ref(model))) if model[id] isa HHAgent]
+        moving_agents = [id for id in ids_in_position(model[0], model) if model[id] isa HHAgent]
         #Check to see if relocating queue is empty
         if length(moving_agents) < 1
             break
@@ -52,5 +52,4 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
 
     #for any households remaining in queues, assume they migrate
     remove_agent!.([a for a in agents_in_position(model[0], model) if a isa HHAgent], Ref(model))
-    remove_agent!.([a for a in agents_in_position(model[-1], model) if a isa HHAgent], Ref(model))
 end

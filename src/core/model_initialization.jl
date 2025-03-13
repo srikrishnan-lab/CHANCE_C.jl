@@ -22,7 +22,7 @@ end
 function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve; 
     no_of_years = 10, no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33, grouped = false, group_col = "adj_income_2019",
     cutoff_dict = OrderedDict("low"=> [0,25000.00], "medium"=>[25000.00,75000.00], "high"=>[75000.00, 1e7]), bg_cat = Dict(:col =>"income_cat", :group => ["low", "medium", "high"]), hh_size = 2.7, 
-    pop_growth_mode = "perc", pop_growth_perc = .01, inc_growth_mode = "random_agent_replication", pop_growth_inc_perc = .90, inc_growth_perc = .05, perc_move = 0.025,
+    pop_growth_mode = "perc", pop_growth_perc = .01, dist_param = [0.3, 0.4, 0.3], inc_growth_mode = "random_agent_replication", pop_growth_inc_perc = .90, inc_growth_perc = .05, perc_move = 0.025,
     house_choice_mode = "simple_avoidance_utility", simple_anova_coefficients = [-121428, 294707, 130553, 128990, 154887], flood_coefficient = -500000, budget_reduction_perc = .90,
     penalty = -50, stock_increase_mode = "simple_perc",  stock_increase_perc = .05,  housing_pricing_mode = "simple_perc", price_increase_perc = .05,
     levee = false, risk_averse = 0.3, flood_mem = 10, fixed_effect = 0, seed = 1500,
@@ -33,9 +33,7 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
     #Agent relocation
     flood_hazard = Dict(:mem => flood_mem, :levee => levee, :f_e => fixed_effect, :flood_coef => flood_coefficient)
     #AgentCreation
-    agent_creation = Dict(:growth_mode => pop_growth_mode, :growth_rate => pop_growth_perc, :inc_growth_mode => inc_growth_mode, :pop_growth_inc_perc => pop_growth_inc_perc,
-    :inc_growth_perc => inc_growth_perc, :no_hhs_per_agent => no_hhs_per_agent, :hh_size => hh_size, :simple_avoidance_perc => simple_avoidance_perc, :house_budget_mode => house_budget_mode,
-    :hh_budget_perc => hh_budget_perc)
+    agent_creation = Dict(:growth_rate => pop_growth_perc)
 
     #Agent relocation
     averse_move = Dict(:category => bg_cat[:group], :levee => levee, :risk_averse => risk_averse, :mem => flood_mem, :base_prob => perc_move, :f_e => fixed_effect)
@@ -89,7 +87,7 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
 
     for bg in collect(allagents(model))
         dict, agent_df = agent_bin_cont(bg.GEOID, pop_df; no_hhs_per_agent=no_hhs_per_agent, group_col = group_col, cutoffs = cutoff_dict,
-         house_budget_mode = house_budget_mode, hh_budget_perc = 0.33)
+         house_budget_mode = house_budget_mode, hh_budget_perc = hh_budget_perc)
         
         no_of_hhs = sum(agent_df.nrow)
         for row in Tables.namedtupleiterator(agent_df)
@@ -134,6 +132,17 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
     add_agent_single!(Relocating(0,(0,0)), model)
     #For unassigned agents (for new agent creation)
     add_agent_single!(Unassigned(-1,(0,0)), model)
+    new_agent_df = NewAgentCreation(pop_df, model; no_of_years = no_of_years, growth_rate = pop_growth_perc, dist_param = dist_param, group_col = "adj_income_2019",
+    cutoffs = cutoff_dict, no_hhs_per_agent = no_hhs_per_agent, house_budget_mode = house_budget_mode, hh_budget_perc = hh_budget_perc)
+
+    for row in Tables.namedtupleiterator(new_agent_df)
+        # indicate whether agent avoids flood zone (used in "simple avoidance utility" model)
+        agent_avoid = rand(abmrng(model),Uniform(0,1)) <= simple_avoidance_perc ? true : false
+
+        #Add agent to model
+        add_agent!(model[-1].pos, HHAgent, model, -1, row.nrow, row.cat, row.race, Int(round(row.avg_hh_size)), 
+        Float64(row.avg_income), Dict(-1 => 0.0), house_budget_mode, model.tick, simple_avoidance_perc, agent_avoid, row.budget, hh_budget_perc)
+    end
 
     #model.avg_hh_income = mean([a.income for a in allagents(model) if a isa HHAgent])
     #model.avg_hh_size = mean([a.hh_size for a in allagents(model) if a isa HHAgent])

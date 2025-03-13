@@ -33,7 +33,7 @@ function model_step!(model::ABM)
     #clear utilities df
     empty!(model.hh_utilities_df)
     #create new agents
-    #NewAgentCreation(model; model.agent_creation...)
+    AgentMigration(model; model.agent_creation...)
     #Determine relocating HHAgents and potential moving locations
     for id in Agents.schedule(model)
         agent_step!(model[id],model)

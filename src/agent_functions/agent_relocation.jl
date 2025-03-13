@@ -72,6 +72,114 @@ functions NewAgentLocation and ExistingAgentLocation in the python version of CH
 """
 function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
     budget_reduction_perc = 0.10, penalty = 50, migrate_prob = 0.05)
+    
+    if agent.type == :Relocating
+        loc_df = copy(model.df)
+        # Create a GEOID-to-BlockGroup lookup
+        geoid_to_bg = Dict{Int64, Int64}()
+        for bg in allagents(model)
+            if bg isa BlockGroup
+                geoid_to_bg[bg.GEOID] = bg.id
+            end
+        end
+
+        # Use view or filter instead of multiple list comprehensions
+        moving_agents = sort!([a for a in agents_in_position(agent, model) if a isa HHAgent], by=a -> a.income, rev=true)
+
+        current_index = 1
+        #Preallocate some vectors to reduce memory allocations
+        hh_ids = Vector{Int64}(undef, bg_sample_size * length(moving_agents))
+        bg_ids = Vector{Int64}(undef, bg_sample_size * length(moving_agents))
+        bg_GEOID = Vector{Int64}(undef, bg_sample_size* length(moving_agents))
+        bg_cat = Vector{String}(undef, bg_sample_size* length(moving_agents))
+        bg_utilities = Vector{Float64}(undef, bg_sample_size * length(moving_agents))
+
+        for hh_agent in moving_agents
+            # Consolidate budget selection logic
+            bg_budget = if house_choice_mode == "simple_avoidance_utility"
+                hh_agent.avoidance ? 
+                    subset(loc_df, :perc_fld_area => n -> n .<= 0.10) :
+                    subset(loc_df, :market_value => n -> n .<= hh_agent.house_budget, skipmissing=true)
+            elseif house_choice_mode == "budget_reduction"
+                new_house_budget = hh_agent.house_budget * (1 - budget_reduction_perc)
+                hh_budget = ifelse.(loc_df.perc_fld_area .>= 0.10, new_house_budget, hh_agent.house_budget)
+                subset(loc_df, :market_value => n -> n .<= hh_budget, skipmissing=true, view = true)
+            else
+                subset(loc_df, :market_value => n -> n .<= hh_agent.house_budget, skipmissing=true, view = true)
+            end
+
+
+            # Use a more efficient sampling approach
+            try
+                # Precompute weights to avoid repeated calculations
+                weights = ProbabilityWeights(bg_budget.available_units ./ sum(bg_budget.available_units))
+                    
+                # Check for available locations more efficiently
+                valid_locations = findall(weights .> 0)
+                if isempty(valid_locations)
+                    throw(ErrorException("No affordable locations with available units"))
+                end
+
+                #Sample from affordable locations based on weights
+                sample_size = min(length(valid_locations), bg_sample_size)
+                sampled_indices = sample(abmrng(model), valid_locations, sample_size, replace=false)
+                
+                #Grab utilities from sampled locations
+                loc_utilities = [model[geoid_to_bg[row.GEOID]].current_utility[row.income_cat] for row in eachrow(bg_budget[sampled_indices, [:GEOID, :income_cat]])]
+                # Find indices of block groups with better utilities than current agent location
+                current_utility = first(values(hh_agent.utility))
+                opt_locs = findall(>(current_utility), loc_utilities)
+
+                # Check if any moves are possible
+                if isempty(opt_locs)
+                    throw(ErrorException("No better locations found"))
+                end
+                best_indices = sampled_indices[opt_locs]
+                
+                #Append future block group properties to vectors
+                ind_length = length(best_indices)
+
+                copyto!(hh_ids, current_index, fill(hh_agent.id, ind_length), 1, ind_length)
+                copyto!(bg_ids, current_index, getindex.(Ref(geoid_to_bg), bg_budget[best_indices,:GEOID]), 1, ind_length)
+                copyto!(bg_GEOID, current_index, bg_budget[best_indices, :GEOID], 1, ind_length)
+                copyto!(bg_cat, current_index, bg_budget[best_indices, :income_cat], 1, ind_length)
+                copyto!(bg_utilities, current_index, loc_utilities[opt_locs], 1, ind_length)
+
+                current_index += ind_length
+                
+            catch
+                # Migration logic remains similar
+                last_bg = model[first(keys(hh_agent.utility))]
+                if last_bg == -1
+                    remove_agent!(hh_agent, model)
+                    continue
+                end
+                
+                if rand(abmrng(model), Binomial(1, migrate_prob)) == 1
+                    move_agent!(hh_agent, last_bg.pos, model)
+                    last_bg.occupied_units[hh_agent.group] += 1
+                    last_bg.available_units[hh_agent.group] -= 1
+                    last_bg.population += getproperty(hh_agent, :no_hhs_per_agent) * getproperty(hh_agent, :hh_size)
+                else
+                    remove_agent!(hh_agent, model)
+                end
+            end
+        end
+        
+        ##Create df from vectors, append to model properties df
+        #Remove extra undef values by using current index
+        bg_sample = DataFrame(hh_id = hh_ids[1:current_index-1], bg_id = bg_ids[1:current_index-1], 
+        GEOID = bg_GEOID[1:current_index-1], cat = bg_cat[1:current_index-1], bg_utility = bg_utilities[1:current_index-1])
+        
+        append!(model.hh_utilities_df, bg_sample)
+    else
+        return 
+    end
+end
+
+"""
+function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
+    budget_reduction_perc = 0.10, penalty = 50, migrate_prob = 0.05)
     #Create dataframe to store potential relocation bgs
     bg_sample = DataFrame(hh_id = Int64[], bg_id = Int64[], GEOID = Int64[], cat = String[], bg_utility = Float64[])
     moving_agents = sort!([a for a in agents_in_position(agent, model) if a isa HHAgent], by=a -> a.income, rev=true)
@@ -254,3 +362,4 @@ function AgentLocation2(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_s
 
     append!(model.hh_utilities_df, bg_sample)
 end
+"""

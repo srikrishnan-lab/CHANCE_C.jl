@@ -36,8 +36,8 @@ start_year = 1980
 no_hhs_per_agent=10
 grouped = true
 group_col = "adj_income_2019"
-cutoff_dict = OrderedDict("low"=> [-60000.00,25000.00], "medium"=>[25000.00,75000.00], "high"=>[75000.00, 1e7])
-bg_cat = Dict(:col =>"income_cat", :group => ["low", "medium", "high"])
+cutoff_dict = OrderedDict(1=> [-60000.00,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7])
+bg_cat = Dict(:col =>"income_cat", :group => [1,2,3])
 house_budget_mode = "perc"
 house_choice_mode = "flood_mem_utility"
 risk_averse = 0.3
@@ -163,7 +163,7 @@ end
 f_dict, f_matrix = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start_year = start_year)
 
 ### Initialize ABM
-phil_abm = CHANCE_C.Simulator(phil_bg, phil_base_pop, f_dict, f_matrix, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
+phil_abm = CHANCE_C.Simulator(phil_bg, phil_base_pop, f_dict, f_matrix, CHANCE_C.model_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
 house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
 risk_averse = risk_averse, flood_mem = flood_mem, seed = seed)
 

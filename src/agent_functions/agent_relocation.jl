@@ -107,9 +107,9 @@ end
 functions NewAgentLocation and ExistingAgentLocation in the python version of CHANCE-C are recreated with function AgentLocation. 
 """
 function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
-    budget_reduction_perc = 0.10, penalty = 50, migrate_prob = 0.05)
+    budget_reduction_perc = 0.10, penalty = 50)
     
-    if agent.type == :Relocating
+    if agent.type == :relocating
         loc_df = copy(model.df)
         # Create a GEOID-to-BlockGroup lookup
         geoid_to_bg = Dict{Int64, Int64}()
@@ -146,6 +146,7 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
 
 
             # Use a more efficient sampling approach
+            util_diff = 0
             try
                 # Precompute weights to avoid repeated calculations
                 weights = ProbabilityWeights(bg_budget.available_units ./ sum(bg_budget.available_units))
@@ -161,9 +162,10 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
                 sampled_indices = sample(abmrng(model), valid_locations, sample_size, replace=false)
                 
                 #Grab utilities from sampled locations
-                loc_utilities = [model[geoid_to_bg[row.GEOID]].current_utility[row.income_cat] - ((row.income_cat - hh_agent.group) * penalty) for row in eachrow(bg_budget[sampled_indices, [:GEOID, :income_cat]])]
+                loc_utilities = [model[geoid_to_bg[row.GEOID]].current_utility[row.income_cat] + ((row.income_cat - hh_agent.group) * penalty) for row in eachrow(bg_budget[sampled_indices, [:GEOID, :income_cat]])]
                 # Find indices of block groups with better utilities than current agent location
                 current_utility = first(values(hh_agent.utility))
+                util_diff = (current_utility - maximum(loc_utilities)) / current_utility
                 opt_locs = findall(>(current_utility), loc_utilities)
 
                 # Check if any moves are possible
@@ -190,8 +192,9 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
                     remove_agent!(hh_agent, model)
                     continue
                 end
-                
-                if rand(abmrng(model), Binomial(1, migrate_prob)) == 1
+
+                stay_prob = 1/(1+ exp(-3(util_diff)))
+                if rand(abmrng(model), Binomial(1, stay_prob)) == 1
                     move_agent!(hh_agent, last_bg.pos, model)
                     last_bg.occupied_units[hh_agent.group] += 1
                     last_bg.available_units[hh_agent.group] -= 1

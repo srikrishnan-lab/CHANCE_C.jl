@@ -4,7 +4,7 @@ using Agents
     #Attributes
     bg_id::Int64
     no_hhs_per_agent::Int64
-    group::String
+    group::Int64
     race::Float64
     hh_size::Int64
     income::Float64
@@ -13,6 +13,8 @@ using Agents
     house_budget_mode::String
     year_of_residence::Int64
     simple_avoidance_perc::Float64
+    flood_hazard::Vector{Float64}
+    flood_experience::Float64
     avoidance::Bool
     house_budget::Float64
     hh_budget_perc::Float64
@@ -32,15 +34,15 @@ end
 
     population::Int64
     flood_hazard::Float64
-    base_utility::Union{Float64, Dict{String, Float64}}
-    current_utility::Union{Float64, Dict{String, Float64}}
-    new_price::Union{Float64, Dict{String, Float64}}
+    base_utility::Union{Float64, Dict{Int64, Float64}}
+    current_utility::Union{Float64, Dict{Int64, Float64}}
+    new_price::Union{Float64, Dict{Int64, Float64}}
     years_since_major_flooding::Int64
-    occupied_units::Union{Int64, Dict{String, Int64}}
-    available_units::Union{Int64, Dict{String, Int64}}
+    occupied_units::Union{Int64, Dict{Int64, Int64}}
+    available_units::Union{Int64, Dict{Int64, Int64}}
     pop_density::Float64
-    demand_exceeds_supply::Union{Vector{Bool}, Dict{String, Vector{Bool}}}
-    new_units_constructed::Union{Int64, Dict{String, Int64}}
+    demand_exceeds_supply::Union{Vector{Bool}, Dict{Int64, Vector{Bool}}}
+    new_units_constructed::Union{Int64, Dict{Int64, Int64}}
     avg_hh_size::Float64
     avg_home_price::Float64
     avg_hh_income::Float64    

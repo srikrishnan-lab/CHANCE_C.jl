@@ -1,6 +1,6 @@
 
 function NewAgentCreation(pop_df::DataFrame, model::ABM; no_of_years = 10, growth_rate = 0.01, dist_param = [0.3, 0.4, 0.3], group_col = "adj_income_2019",
-    cutoffs = OrderedDict("low"=> [0,25000.00], "medium"=>[25000.00,75000.00], "high"=>[75000.00, 1e7]), no_hhs_per_agent = 10, house_budget_mode = "perc", hh_budget_perc = 0.33)
+    cutoffs = OrderedDict(1=> [0,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7]), no_hhs_per_agent = 10, house_budget_mode = "perc", hh_budget_perc = 0.33)
 
     ##Calculate max number of migrating agents based on initial model pop and growth rate
     initial_pop = length([a for a in allagents(model) if a isa HHAgent])
@@ -20,11 +20,11 @@ function NewAgentCreation(pop_df::DataFrame, model::ABM; no_of_years = 10, growt
     pop_cat_df = groupby(pop_hh_df, :category)
 
     #Create empty DataFrame
-    agent_df = DataFrame(nrow = Int64[], cat = String[], race = Float64[], avg_hh_size = Float64[], avg_income = Float64[])
+    agent_df = DataFrame(nrow = Int64[], cat = Int64[], race = Float64[], avg_hh_size = Float64[], avg_income = Float64[])
     for (i,sub_df) in enumerate(pop_cat_df)
         sort!(sub_df, group_col)
         sub_df[:,:group] = map(x->div(x,no_hhs_per_agent), 1:nrow(sub_df))
-        hh_bins = combine(groupby(sub_df, :group), nrow, :category => maximum => :cat, :RAC1P => (r -> mode(r)) => :race,  [:NP, :adj_income_2019] .=> mean .=> [:avg_hh_size, :avg_income])
+        hh_bins = combine(groupby(sub_df, :group), nrow, :category => (c -> mode(c)) => :cat, :RAC1P => (r -> mode(r)) => :race,  [:NP, :adj_income_2019] .=> mean .=> [:avg_hh_size, :avg_income])
         inc_w = ProbabilityWeights(hh_bins.avg_income ./ sum(hh_bins.avg_income)) #Calculate weights based on avg income
         append!(agent_df, hh_bins[sample(abmrng(model), 1:nrow(hh_bins), inc_w, Int(migrant_cat_pop[i]); replace = true),2:end]) #Sample rows based on migrant category count
     end

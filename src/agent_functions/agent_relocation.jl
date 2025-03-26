@@ -16,11 +16,11 @@ function ExistingAgentResampler(agent::BlockGroup, model::ABM; perc_move = 0.10)
     
     agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
 end
-
-function agent_prob!(agent::BlockGroup, model::ABM; category = ["low", "medium", "high"], levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
-    """Function determines probability of agent action
-    using a risk aversion function.
-    Output updates agent's action property""" 
+"""
+function agent_prob!(agent::BlockGroup, model::ABM; category = [1,2,3], levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
+    #Function determines probability of agent action
+    #using a risk aversion function.
+    #Output updates agent's action property
     ### Calculate logistic Probability ###
    
     #Fixed effect: define scaling factor depending on levee presence
@@ -65,7 +65,43 @@ function agent_prob!(agent::BlockGroup, model::ABM; category = ["low", "medium",
     agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
     
 end
+"""
 
+function agent_prob!(agent::HHAgent, model::ABM; levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
+    """Function determines probability of agent action
+    using a risk aversion function.
+    Output updates agent's action property""" 
+    
+    ### Calculate logistic Probability ###
+   
+    #Fixed effect: define scaling factor depending on levee presence
+    scale_factor = levee ? 0.1 - f_e : 0.1
+    #Calculate flood probability based on risk averse value
+    if agent.flood_experience == 0
+        flood_prob = base_prob
+    elseif risk_averse == 0
+        flood_prob = 1/(1+ exp(-20((agent.flood_experience/mem) - 0.1))) + base_prob
+    elseif risk_averse == 1
+        flood_prob = 0
+    else
+        flood_prob = 1/(1+ exp(-((agent.flood_experience/mem) - risk_averse)/scale_factor)) + base_prob
+    end
+     
+    move_prob = flood_prob <= 1.0 ? flood_prob : 1
+    
+    ### Move triggered agent to Queue ###
+    if Bool(rand(abmrng(model), Binomial(1,move_prob)))
+        #Get Block Group id of agent's location
+        bg_id = first(keys(agent.utility))
+        setproperty!(agent, :bg_id, 0)
+        #Move agents to relocating Queue
+        move_agent!(agent, model[0].pos, model)
+        model[bg_id].occupied_units[agent.group] -= 1
+        model[bg_id].available_units[agent.group] += 1
+
+        model[bg_id].population -= getproperty(agent,:no_hhs_per_agent) * getproperty(agent,:hh_size)
+    end
+end
 
 """
 functions NewAgentLocation and ExistingAgentLocation in the python version of CHANCE-C are recreated with function AgentLocation. 
@@ -91,7 +127,7 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
         hh_ids = Vector{Int64}(undef, bg_sample_size * length(moving_agents))
         bg_ids = Vector{Int64}(undef, bg_sample_size * length(moving_agents))
         bg_GEOID = Vector{Int64}(undef, bg_sample_size* length(moving_agents))
-        bg_cat = Vector{String}(undef, bg_sample_size* length(moving_agents))
+        bg_cat = Vector{Int64}(undef, bg_sample_size* length(moving_agents))
         bg_utilities = Vector{Float64}(undef, bg_sample_size * length(moving_agents))
 
         for hh_agent in moving_agents
@@ -125,7 +161,7 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
                 sampled_indices = sample(abmrng(model), valid_locations, sample_size, replace=false)
                 
                 #Grab utilities from sampled locations
-                loc_utilities = [model[geoid_to_bg[row.GEOID]].current_utility[row.income_cat] for row in eachrow(bg_budget[sampled_indices, [:GEOID, :income_cat]])]
+                loc_utilities = [model[geoid_to_bg[row.GEOID]].current_utility[row.income_cat] - ((row.income_cat - hh_agent.group) * penalty) for row in eachrow(bg_budget[sampled_indices, [:GEOID, :income_cat]])]
                 # Find indices of block groups with better utilities than current agent location
                 current_utility = first(values(hh_agent.utility))
                 opt_locs = findall(>(current_utility), loc_utilities)
@@ -150,7 +186,7 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
             catch
                 # Migration logic remains similar
                 last_bg = model[first(keys(hh_agent.utility))]
-                if last_bg == -1
+                if last_bg.id == -1
                     remove_agent!(hh_agent, model)
                     continue
                 end

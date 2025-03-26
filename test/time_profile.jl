@@ -19,8 +19,9 @@ f_df = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data", "synth_flood_phil.
 ##For BG
 #open bg file
 phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/philly_bg_2019.csv")))
+phil_flood_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019.csv")))
 #groupby BG
-grouped_phil_bg = groupby(phil_bg, :GEOID)
+#grouped_phil_bg = groupby(phil_flood_bg, :GEOID)
 
 ##load pop data
 phil_cbsa_base_pop = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data/census_data/synth_pop/pop_files/philly_cbsa_pop_0.csv")))
@@ -39,8 +40,8 @@ start_year = 1981
 no_hhs_per_agent=10
 grouped = true
 group_col = "adj_income_2019"
-cutoff_dict = OrderedDict("low"=> [-60000.00,25000.00], "medium"=>[25000.00,75000.00], "high"=>[75000.00, 1e7])
-bg_cat = Dict(:col =>"income_cat", :group => ["low", "medium", "high"])
+cutoff_dict = OrderedDict(1=> [-60000.00,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7])
+bg_cat = Dict(:col =>"income_cat", :group => [1,2,3])
 house_budget_mode = "perc"
 house_choice_mode = "flood_mem_utility"
 risk_averse = 0.3
@@ -52,12 +53,11 @@ tmr = TimerOutput()
 
 #Define agent steps
 function ag_step!(agent::CHANCE_C.HHAgent, model::ABM)
-    #Do nothing  
+    CHANCE_C.agent_prob!(agent, model; model.relo_sampler...)
 end
  
 function ag_step!(agent::CHANCE_C.BlockGroup, model::ABM)
-    CHANCE_C.flooded!(agent, model; model.flood_hazard...)
-    CHANCE_C.agent_prob!(agent, model; model.relo_sampler...)
+    CHANCE_C.flooded!(agent, model; model.flood_hazard...)    
 end
  
 function ag_step!(agent::CHANCE_C.Queue, model::ABM)
@@ -80,6 +80,12 @@ function evo_step!(model::ABM)
     #Determine relocating HHAgents and potential moving locations
     @timeit tmr "BG Agent Step" begin
         for id in filter!(id -> model[id] isa CHANCE_C.BlockGroup, collect(Agents.schedule(model)))
+            ag_step!(model[id],model)
+        end
+    end
+    #Determine relocating HHAgents and potential moving locations
+    @timeit tmr "HH Agent Step" begin
+        for id in filter!(id -> model[id] isa CHANCE_C.HHAgent && model[id].bg_id > 0, collect(Agents.schedule(model)))
             ag_step!(model[id],model)
         end
     end
@@ -115,10 +121,10 @@ end
 ### Simple measure of model performance ###
 
 ## Calculate Flood matrix and Dict for ABM input
-f_dict, f_matrix = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start_year = start_year)
+f_matrix, f_dict = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start_year = start_year)
 
 ### Initialize ABM
-phil_abm = CHANCE_C.Simulator(phil_bg, phil_cbsa_base_pop, f_dict, f_matrix, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
+phil_abm = CHANCE_C.Simulator(phil_flood_bg, phil_cbsa_base_pop, f_matrix, f_dict, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
 house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
 pop_growth_perc = growth_rate, risk_averse = risk_averse, flood_mem = flood_mem, seed = seed)
 
@@ -127,7 +133,7 @@ show(tmr)
 reset_timer!(tmr)
 
 ##Performance Measure 
-b = @benchmarkable step!(phil_abm, no_of_years) setup=(phil_abm = CHANCE_C.Simulator(phil_bg, phil_cbsa_base_pop, f_dict, f_matrix, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
+b = @benchmarkable step!(phil_abm, no_of_years) setup=(phil_abm = CHANCE_C.Simulator(phil_flood_bg, phil_cbsa_base_pop, f_matrix, f_dict, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
 house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
 risk_averse = risk_averse, flood_mem = flood_mem, seed = seed)) seconds=1800 evals=1 samples = 10
 

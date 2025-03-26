@@ -9,12 +9,11 @@ include(joinpath(dirname(@__DIR__), "model_functions/model_include.jl"))
 
 #Define agent steps
 function agent_step!(agent::HHAgent, model::ABM)
-    #Do nothing  
+    agent_prob!(agent, model; model.relo_sampler...) 
 end
  
 function agent_step!(agent::BlockGroup, model::ABM)
     flooded!(agent, model; model.flood_hazard...)
-    agent_prob!(agent, model; model.relo_sampler...)
 end
  
 function agent_step!(agent::Queue, model::ABM)
@@ -36,7 +35,11 @@ function model_step!(model::ABM)
     AgentMigration(model; model.agent_creation...)
     #Determine relocating HHAgents and potential moving locations
     for id in Agents.schedule(model)
-        agent_step!(model[id],model)
+        if model[id] isa HHAgent && model[id].bg_id < 1 #Dont involve HHAgents in Queues
+            continue
+        else
+            agent_step!(model[id],model)
+        end
     end
  
     #run Housing Market to move HHAgents to desired locations

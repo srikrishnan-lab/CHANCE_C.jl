@@ -7,9 +7,9 @@ Updating avg_hh_income should be in a bg specific function
 #agent.population
 
 
-function LandscapeStatistics(model::ABM; bg_cat = Dict(:col =>"income_cat", :group => ["low", "medium", "high"]))
+function LandscapeStatistics(model::ABM; bg_cat = Dict(:col =>"income_cat", :group => [1,2,3]))
     # model BG df attributes needing updating:
-    update_df = DataFrame(id = Int64[], cat = String[], occupied_units = Int64[], available_units = Int64[], average_income = Float64[], market_value = Float64[])
+    update_df = DataFrame(id = Int64[], cat = Int64[], occupied_units = Int64[], available_units = Int64[], average_income = Float64[], market_value = Float64[])
     #Update df with collected updated BlockGroupattributes
     for cat in bg_cat[:group]
         push!.(Ref(update_df),[[a.GEOID, cat, a.occupied_units[cat], a.available_units[cat], a.avg_hh_income, a.new_price[cat]] for a in allagents(model) if a isa BlockGroup])

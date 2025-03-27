@@ -27,8 +27,7 @@ phil_flood_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_
 phil_cbsa_base_pop = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data/census_data/synth_pop/pop_files/philly_cbsa_pop_0.csv")))
 #drop missing values
 dropmissing!(phil_cbsa_base_pop, :NP)
-#drop rows with negative income
-subset!(phil_cbsa_base_pop, :adj_income_2019 .=> ByRow(!<(0)))
+
 
 #Subset to Phil. County (Not part of function)
 #phil_base_pop = subset(phil_cbsa_base_pop, :county => x -> x .== 42101)

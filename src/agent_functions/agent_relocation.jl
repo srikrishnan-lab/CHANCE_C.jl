@@ -108,7 +108,7 @@ functions NewAgentLocation and ExistingAgentLocation in the python version of CH
 """
 function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
     budget_reduction_perc = 0.10, penalty = 50)
-    
+
     if agent.type == :relocating
         loc_df = copy(model.df)
         # Create a GEOID-to-BlockGroup lookup
@@ -196,7 +196,12 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
                 stay_prob = 1.5/(1+ exp(-0.6(util_diff)))
                 stay_prob = stay_prob <= 1.0 ? stay_prob : 1.0
                 if rand(abmrng(model), Binomial(1, stay_prob)) == 1
+                    #Revert HHAgent Properties
+                    last_util = first(values(hh_agent.utility))
+                    setproperty!(hh_agent, :bg_id, last_bg.id)
+                    setproperty!(hh_agent, :occ_cat, first([k for (k,v) in last_bg.current_utility if v == last_util]))
                     move_agent!(hh_agent, last_bg.pos, model)
+                    #Update Last BG Properties
                     last_bg.occupied_units[hh_agent.occ_cat] += 1
                     last_bg.available_units[hh_agent.occ_cat] -= 1
                     last_bg.population += getproperty(hh_agent, :no_hhs_per_agent) * getproperty(hh_agent, :hh_size)

@@ -197,9 +197,7 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
                 stay_prob = stay_prob <= 1.0 ? stay_prob : 1.0
                 if rand(abmrng(model), Binomial(1, stay_prob)) == 1
                     #Revert HHAgent Properties
-                    last_util = first(values(hh_agent.utility))
                     setproperty!(hh_agent, :bg_id, last_bg.id)
-                    setproperty!(hh_agent, :occ_cat, first([k for (k,v) in last_bg.current_utility if v == last_util]))
                     move_agent!(hh_agent, last_bg.pos, model)
                     #Update Last BG Properties
                     last_bg.occupied_units[hh_agent.occ_cat] += 1

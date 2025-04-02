@@ -9,13 +9,13 @@ function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 
 
     #subset flood matrix using flood record and sum the total flood area from events experienced
     flood_events = [model.flood_matrix[agent.id, rp, breach] for (breach,rp) in flood_mem]
-    agent.flood_hazard = sum(flood_events)
+    agent.flood_hazard = sum(flood_events)/length(time_back) #Calculate avg. flood per year
 
     ##Utility Updating
     #Determine if flood disamenity is reduced from levee presence
     scale_factor = levee ? 1.0 - (10 * f_e) : 1.0
     #Update Utilities with new flood hazard 
-    util_update = (scale_factor * flood_coef * (agent.flood_hazard/mem))
+    util_update = (scale_factor * flood_coef * (agent.flood_hazard))
     for key in keys(agent.current_utility)
         agent.current_utility[key] = agent.base_utility[key] + util_update
     end
@@ -27,8 +27,8 @@ function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 
         #Add flood event to agent hazard vector
         model[hh_id].flood_hazard[year] = flood_events[1]
         #Calculate remembered flood experience
-        model[hh_id].flood_experience = sum(model[hh_id].flood_hazard[time_back])
+        model[hh_id].flood_experience = sum(model[hh_id].flood_hazard[time_back])/length(time_back)
         #Update HHagent utility
-        model[hh_id].utility[agent.id] = agent.current_utility[model[hh_id].group]
+        model[hh_id].utility[agent.id] = agent.current_utility[model[hh_id].occ_cat]
     end  
 end

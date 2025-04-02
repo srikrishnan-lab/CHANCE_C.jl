@@ -36,7 +36,7 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
     agent_creation = Dict(:growth_rate => pop_growth_perc)
 
     #Agent relocation
-    averse_move = Dict(:levee => levee, :risk_averse => risk_averse, :mem => flood_mem, :base_prob => perc_move, :f_e => fixed_effect)
+    averse_move = Dict(:levee => levee, :risk_averse => risk_averse, :base_prob => perc_move, :f_e => fixed_effect)
     agent_relocate = Dict(:levee => levee, :f_e => fixed_effect, :house_choice_mode => house_choice_mode, :bg_sample_size => no_hhs_per_agent, :budget_reduction_perc => budget_reduction_perc,
     :penalty => penalty)
 

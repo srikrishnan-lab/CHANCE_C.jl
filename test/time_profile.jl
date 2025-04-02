@@ -24,26 +24,25 @@ phil_flood_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_
 #grouped_phil_bg = groupby(phil_flood_bg, :GEOID)
 
 ##load pop data
-phil_cbsa_base_pop = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data/census_data/synth_pop/pop_files/philly_cbsa_pop_0.csv")))
+phil_cbsa_base_pop = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data/model_inputs/pop_files/philly_cbsa_pop_0.csv")))
 #drop missing values
 dropmissing!(phil_cbsa_base_pop, :NP)
-
-
-#Subset to Phil. County (Not part of function)
-#phil_base_pop = subset(phil_cbsa_base_pop, :county => x -> x .== 42101)
+#For rows with people and negative income, set income to bottom 10%
+inc_bot_10 = quantile(subset(phil_cbsa_base_pop, [:NP .=> ByRow(>(0)), :adj_income_2019 .=> ByRow(>(0))]).adj_income_2019, [0.10])[1]
+@. phil_cbsa_base_pop.adj_income_2019 = ifelse.(phil_cbsa_base_pop.NP > 0 && phil_cbsa_base_pop.adj_income_2019 <= 0, inc_bot_10, phil_cbsa_base_pop.adj_income_2019)
 
 
 #Define relevant parameters
-no_of_years = 38
+no_of_years = 39
 start_year = 1981
 no_hhs_per_agent=10
 grouped = true
 group_col = "adj_income_2019"
 cutoff_dict = OrderedDict(1=> [-60000.00,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7])
 bg_cat = Dict(:col =>"income_cat", :group => [1,2,3])
-house_budget_mode = "perc"
+house_budget_mode = "rhea"
 house_choice_mode = "flood_mem_utility"
-risk_averse = 0.3
+risk_averse = 0.5
 flood_mem = 10
 growth_rate = 0.01
 seed = 1500
@@ -127,7 +126,7 @@ phil_abm = CHANCE_C.Simulator(phil_flood_bg, phil_cbsa_base_pop, f_matrix, f_dic
 house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
 pop_growth_perc = growth_rate, risk_averse = risk_averse, flood_mem = flood_mem, seed = seed)
 
-step!(phil_abm)
+step!(phil_abm, no_of_years)
 show(tmr)
 reset_timer!(tmr)
 

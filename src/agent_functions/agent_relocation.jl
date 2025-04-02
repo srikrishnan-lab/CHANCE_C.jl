@@ -67,7 +67,7 @@ function agent_prob!(agent::BlockGroup, model::ABM; category = [1,2,3], levee = 
 end
 """
 
-function agent_prob!(agent::HHAgent, model::ABM; levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
+function agent_prob!(agent::HHAgent, model::ABM; levee = false, risk_averse = 0.3, base_prob = 0.10, f_e = 0)
     """Function determines probability of agent action
     using a risk aversion function.
     Output updates agent's action property""" 
@@ -80,11 +80,11 @@ function agent_prob!(agent::HHAgent, model::ABM; levee = false, risk_averse = 0.
     if agent.flood_experience == 0
         flood_prob = base_prob
     elseif risk_averse == 0
-        flood_prob = 1/(1+ exp(-20((agent.flood_experience/mem) - 0.1))) + base_prob
+        flood_prob = 1/(1+ exp(-20((agent.flood_experience) - 0.1))) + base_prob
     elseif risk_averse == 1
         flood_prob = 0
     else
-        flood_prob = 1/(1+ exp(-((agent.flood_experience/mem) - risk_averse)/scale_factor)) + base_prob
+        flood_prob = 1/(1+ exp(-((agent.flood_experience) - risk_averse)/scale_factor)) + base_prob
     end
      
     move_prob = flood_prob <= 1.0 ? flood_prob : 1

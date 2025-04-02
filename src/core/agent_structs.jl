@@ -4,7 +4,8 @@ using Agents
     #Attributes
     bg_id::Int64
     no_hhs_per_agent::Int64
-    group::Int64
+    group::Int64 #What population category they belong to
+    occ_cat::Int64 #What housing category they live in
     race::Float64
     hh_size::Int64
     income::Float64

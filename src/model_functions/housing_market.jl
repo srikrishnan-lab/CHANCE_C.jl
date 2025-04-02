@@ -9,14 +9,14 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
         if length(moving_agents) < 1
             break
         end
-        bg_demand = DataFrame(top_bg = Int64[], top_cat = String[], hh_id = Int64[], hh_income = Float64[])
+        bg_demand = DataFrame(top_bg = Int64[], top_cat = Int64[], hh_id = Int64[], hh_income = Float64[])
 
         for id in moving_agents
             hh_utilities_subset = model.hh_utilities_df[model.hh_utilities_df.hh_id .== id, :] #Subset hh_utilities_df based on agent choices
             sort!(hh_utilities_subset, :bg_utility, rev=true) #Sort bg candidates from highest to lowest utility
             try
                 top_bg = hh_utilities_subset[market_iter, :bg_id] # get the bg name for the top candidate (excluding previous top candidates from previous iterations)
-                top_cat = hh_utilities_subset[market_iter, :income_cat] # get the category name of bg for the top candidate (excluding previous top candidates from previous iterations)
+                top_cat = hh_utilities_subset[market_iter, :cat] # get the category name of bg for the top candidate (excluding previous top candidates from previous iterations)
                 push!(bg_demand, [top_bg, top_cat, id, model[id].income]) #add bg id, agent id, and agent income to bg_demand
             catch
                 #if index is out of range, means agent has gone through all affordable options
@@ -24,7 +24,7 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
             end
         end
         #Move agents to desired bg, if possible 
-        for (bg_id, cat) in eachrow(unique!(select(model.hh_utilities_df, [:bg_id, :cat])))
+        for (bg_id, cat) in eachrow(unique!(select(bg_demand, [:top_bg, :top_cat])))
             bg_subset = bg_demand[(bg_demand.top_bg .== bg_id) .& (bg_demand.top_cat .== cat), :]
             if nrow(bg_subset) >= model[bg_id].available_units[cat]
                 #subset df further based on available space
@@ -36,12 +36,13 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
                 #move agent to bg
                 move_agent!(model[hh_id], model[bg_id].pos, model)
                 #Update bg_id, utility,  year of residence of agent
-                setproperty!(model[hh_id], :bg_id, model[bg_id].GEOID)
+                setproperty!(model[hh_id], :bg_id, bg_id)
+                setproperty!(model[hh_id], :occ_cat, cat)
                 setproperty!(model[hh_id], :utility, Dict(bg_id => model[bg_id].current_utility[cat]))
                 setproperty!(model[hh_id], :year_of_residence, model.tick)
                 #update bg attributes
-                model[bg_id].occupied_units[model[hh_id].group] += 1
-                model[bg_id].available_units[model[hh_id].group] -= 1
+                model[bg_id].occupied_units[cat] += 1
+                model[bg_id].available_units[cat] -= 1
 
                 model[bg_id].population += getproperty(model[hh_id],:no_hhs_per_agent) * getproperty(model[hh_id],:hh_size)
             end

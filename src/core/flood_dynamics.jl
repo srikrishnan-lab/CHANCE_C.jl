@@ -142,11 +142,11 @@ end
 ## Input should be formatted as Dataframe with Rows representing BlockGroups and Columns representing Years 
     #(With first column being the BG GEOID column). 
 
-function flood_history(base_df; no_of_years = 10, start_year = 1980, slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2])
+function flood_history(base_df; no_of_years = 10, start_year = 1981, slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2])
     #Sort df on GEOID
     sort!(base_df, :GEOID)
     #Select years of interest. Subset df
-    flood_df = select(base_df,Symbol.(collect(range(start_year, start_year+no_of_years, step = 1))))
+    flood_df = select(base_df,Symbol.(collect(range(start_year, start_year+(no_of_years-1), step = 1))))
     #Convert df to matrix
     flood_mat = zeros(size(flood_df)[1], size(flood_df)[2], 1)
     flood_mat[:,:,1] = Matrix(flood_df)

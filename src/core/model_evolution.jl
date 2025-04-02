@@ -34,7 +34,7 @@ function model_step!(model::ABM)
     #create new agents
     AgentMigration(model; model.agent_creation...)
     #Determine relocating HHAgents and potential moving locations
-    for id in Agents.schedule(model)
+    for id in collect(Agents.schedule(model))
         if model[id] isa HHAgent && model[id].bg_id < 1 #Dont involve HHAgents in Queues
             continue
         else

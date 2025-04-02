@@ -96,8 +96,8 @@ function agent_prob!(agent::HHAgent, model::ABM; levee = false, risk_averse = 0.
         setproperty!(agent, :bg_id, 0)
         #Move agents to relocating Queue
         move_agent!(agent, model[0].pos, model)
-        model[bg_id].occupied_units[agent.group] -= 1
-        model[bg_id].available_units[agent.group] += 1
+        model[bg_id].occupied_units[agent.occ_cat] -= 1
+        model[bg_id].available_units[agent.occ_cat] += 1
 
         model[bg_id].population -= getproperty(agent,:no_hhs_per_agent) * getproperty(agent,:hh_size)
     end
@@ -134,8 +134,8 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
             # Consolidate budget selection logic
             bg_budget = if house_choice_mode == "simple_avoidance_utility"
                 hh_agent.avoidance ? 
-                    subset(loc_df, :perc_fld_area => n -> n .<= 0.10) :
-                    subset(loc_df, :market_value => n -> n .<= hh_agent.house_budget, skipmissing=true)
+                    subset(loc_df, :perc_fld_area => n -> n .<= 0.10, view = true) :
+                    subset(loc_df, :market_value => n -> n .<= hh_agent.house_budget, skipmissing=true, view = true)
             elseif house_choice_mode == "budget_reduction"
                 new_house_budget = hh_agent.house_budget * (1 - budget_reduction_perc)
                 hh_budget = ifelse.(loc_df.perc_fld_area .>= 0.10, new_house_budget, hh_agent.house_budget)
@@ -193,11 +193,12 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
                     continue
                 end
 
-                stay_prob = 1/(1+ exp(-3(util_diff)))
+                stay_prob = 1.5/(1+ exp(-0.6(util_diff)))
+                stay_prob = stay_prob <= 1.0 ? stay_prob : 1.0
                 if rand(abmrng(model), Binomial(1, stay_prob)) == 1
                     move_agent!(hh_agent, last_bg.pos, model)
-                    last_bg.occupied_units[hh_agent.group] += 1
-                    last_bg.available_units[hh_agent.group] -= 1
+                    last_bg.occupied_units[hh_agent.occ_cat] += 1
+                    last_bg.available_units[hh_agent.occ_cat] -= 1
                     last_bg.population += getproperty(hh_agent, :no_hhs_per_agent) * getproperty(hh_agent, :hh_size)
                 else
                     remove_agent!(hh_agent, model)

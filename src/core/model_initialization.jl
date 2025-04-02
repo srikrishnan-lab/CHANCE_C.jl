@@ -62,7 +62,7 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
     model = ABM(
         Union{BlockGroup,HHAgent,Queue},
         space,
-        scheduler = Schedulers.ByType((HHAgent, BlockGroup, Queue), false),
+        scheduler = Schedulers.ByType((BlockGroup, HHAgent, Queue), false),
         model_step! = model_evolve,
         properties = parameters,
         rng = MersenneTwister(seed),
@@ -95,7 +95,7 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
             agent_avoid = rand(abmrng(model),Uniform(0,1)) <= simple_avoidance_perc ? true : false
 
             #Add agent to model
-            add_agent!(bg.pos, HHAgent, model, bg.id, row.nrow, row.cat, row.race, Int(round(row.avg_hh_size)), Float64(row.avg_income), Dict(bg.id => bg.current_utility[row.cat]),
+            add_agent!(bg.pos, HHAgent, model, bg.id, row.nrow, row.cat, row.cat, row.race, Int(round(row.avg_hh_size)), Float64(row.avg_income), Dict(bg.id => bg.current_utility[row.cat]),
              house_budget_mode, model.tick, simple_avoidance_perc, zeros(no_of_years), 0, agent_avoid, row.budget, hh_budget_perc)
         end
         #Calculate BG statistics based on agent properties within each BG
@@ -112,10 +112,10 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
             bg.available_units = dict[:vacant]
             
         elseif typeof(bg.occupied_units) == Dict{Int64, Int64}
-            occ_dict = Dict(k => length([a for a in agents_in_position(bg, model) if a isa HHAgent && a.group == k]) for k in keys(bg.occupied_units))
+            occ_dict = Dict(k => length([a for a in agents_in_position(bg, model) if a isa HHAgent && a.occ_cat == k]) for k in keys(bg.occupied_units))
             bg.occupied_units = occ_dict
             #Calculate available_units for associated block group 
-            total_prop = sum(values(bg.available_units))
+            total_prop = sum(values(bg.available_units)) #Need to check that this is greater than occupied_units
             vac_dict = Dict(k => Int(round((v/total_prop) * dict[:vacant])) for (k,v) in bg.available_units)
             bg.available_units = vac_dict
 
@@ -140,7 +140,7 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
         agent_avoid = rand(abmrng(model),Uniform(0,1)) <= simple_avoidance_perc ? true : false
 
         #Add agent to model
-        add_agent!(model[-1].pos, HHAgent, model, -1, row.nrow, row.cat, row.race, Int(round(row.avg_hh_size)), 
+        add_agent!(model[-1].pos, HHAgent, model, -1, row.nrow, row.cat, 0, row.race, Int(round(row.avg_hh_size)), 
         Float64(row.avg_income), Dict(-1 => 0.0), house_budget_mode, model.tick, simple_avoidance_perc, zeros(no_of_years), 0, agent_avoid, row.budget, hh_budget_perc)
     end
 

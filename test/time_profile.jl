@@ -16,6 +16,13 @@ using BenchmarkTools, TimerOutputs
 ### Load input Data
 f_df = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data", "synth_flood_phil.csv")))
 
+phil_flood = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data", "model_inputs", "phil_flood_hist_year.csv")))
+#transform df to correct format
+phil_flood_rec = unstack(phil_flood, :GEOID, :year, :perc_flood_extent)
+#Extra edits
+phil_flood_rec[!,"1982"] = zeros(size(phil_flood_rec)[1])
+select!(phil_flood_rec, "GEOID", "1981", "1982", Not(["1982", "2019"]), "2019")
+
 ##For BG
 #open bg file
 phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/philly_bg_2019.csv")))
@@ -119,7 +126,7 @@ end
 ### Simple measure of model performance ###
 
 ## Calculate Flood matrix and Dict for ABM input
-f_matrix, f_dict = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start_year = start_year)
+f_matrix, f_dict = CHANCE_C.flood_history(phil_flood_rec; no_of_years = no_of_years, start_year = start_year)
 
 ### Initialize ABM
 phil_abm = CHANCE_C.Simulator(phil_flood_bg, phil_cbsa_base_pop, f_matrix, f_dict, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,

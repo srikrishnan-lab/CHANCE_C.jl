@@ -1,57 +1,29 @@
-
-using Agents
-## Agent Filtering
-#Filter by BGs in/out floodplain
+##Calculating Population Characteristics
 BG(agent) = agent isa BlockGroup
-f_bgs(agent) = agent isa BlockGroup && agent.perc_fld_area > 0
-nf_bgs(agent) = agent isa BlockGroup && agent.perc_fld_area == 0
+HH(agent) = agent isa HHAgent && agent.bg_id >= 1
+#Pop. Category Pop
+hh_low(agent) = agent.group == 1 ? 1 : 0
+hh_med(agent) = agent.group == 2 ? 1 : 0
+hh_high(agent) = agent.group == 3 ? 1 : 0
+#Occupancy Pop
+occ_low(agent) = agent.occupied_units[1]
+occ_med(agent) = agent.occupied_units[2]
+occ_high(agent) = agent.occupied_units[3]
 
-#Count HHAgents in BG
-bg_pop(agent) = length([a for a in agents_in_position(agent, model) if a isa HHAgent])
-
-#Count HHAgents trying to move each year
-Rel(agent) = agent isa Queue && agent.type == :relocating
-Un(agent) = agent isa Queue && agent.type == :unassigned
-move_pop(agent) = length([a for a in agents_in_position(agent, model) if a isa HHAgent])
-##Population
-#Calculate population density for BG
-pop_den(agent) = agent.population / agent.area
-
-#Calculate population change for BG
-pop_change(agent) = (agent.population - agent.pop90) / agent.pop90
-
-#get income
-bg_inc(agent) = sum([a.income for a in agents_in_position(agent, model) if a isa HHAgent])
-
-##
-#Grab surge events at each time step
-function flood_record(model::ABM)
-    if model.tick == 0
-        return 0.0
-    else
-        surge_range = collect(0.5:0.25:4)
-        breach, rp = model.flood_dict[model.tick]
-        return surge_range[rp]
+##Calculating Transaction Characteristics
+function moved(model, cat)
+    count = 0
+    cat_ids = [id for id in allids(model) if model[id] isa HHAgent && model[id].bg_id >= 1 && model[id].group == cat]
+    for id in cat_ids
+        count += model[id].year_of_residence == model.tick ? 1.0 : 0.0
     end
+    return count  
 end
 
-#Grab intervention scenario at each time step
-function flood_scenario(model::ABM)
-    if model.tick == 0
-        return 0.0
-    else
-        breach, rp = model.flood_dict[model.tick]
-        return breach
-    end
-end
+moved_low(model) = moved(model, 1)
+moved_med(model) = moved(model, 2)
+moved_high(model) = moved(model, 3)
 
-#Calculate total flood area at each time step
-function total_fld_area(model::ABM)
-    if model.tick == 0
-        return 0.0
-    else
-        breach, rp = model.flood_dict[model.tick]
-        fld_area = sum(model.flood_matrix[:, rp, breach])
-        return fld_area
-    end
-end
+price_low(agent) = agent.new_price[1]
+price_med(agent) = agent.new_price[2]
+price_high(agent) = agent.new_price[3]

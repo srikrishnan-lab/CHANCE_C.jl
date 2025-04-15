@@ -1,15 +1,12 @@
 
 function HousingPricing(agent::BlockGroup, model::ABM; housing_pricing_mode = "simple_perc", price_increase_perc = 0.05)
     for key in keys(agent.demand_exceeds_supply)
-        if agent.demand_exceeds_supply[key][model.tick]
-            agent.new_price[key] *= (1 + price_increase_perc)
+        tot_units = agent.available_units[key] + agent.occupied_units[key]
+        if tot_units == 0 #No housing present in that Category 
+            continue
+        else
             #update bg new price in dataframe
-        end
-
-        if model.tick >= 5
-            if !any(last(agent.demand_exceeds_supply[key][1:model.tick],5))
-                agent.new_price[key] *= (1 - price_increase_perc)
-            end
+            agent.new_price[key] *= (1 + (price_increase_perc*(agent.demand_exceeds_supply[key][model.tick]/tot_units)))
         end
     end
 end

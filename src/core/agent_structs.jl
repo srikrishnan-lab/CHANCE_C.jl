@@ -42,7 +42,7 @@ end
     occupied_units::Union{Int64, Dict{Int64, Int64}}
     available_units::Union{Int64, Dict{Int64, Int64}}
     pop_density::Float64
-    demand_exceeds_supply::Union{Vector{Bool}, Dict{Int64, Vector{Bool}}}
+    demand_exceeds_supply::Union{Vector{Float64}, Dict{Int64, Vector{Float64}}}
     new_units_constructed::Union{Int64, Dict{Int64, Int64}}
     avg_hh_size::Float64
     avg_home_price::Float64

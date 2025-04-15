@@ -1,5 +1,5 @@
 ## Update Flooded Houses
-function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 0.0, flood_coef = -500000)
+function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 0.0, flood_coef = 500000)
     
     year = model.tick
     ##Record number of floods in the last mem years
@@ -17,7 +17,7 @@ function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 
     #Update Utilities with new flood hazard 
     util_update = (scale_factor * flood_coef * (agent.flood_hazard))
     for key in keys(agent.current_utility)
-        agent.current_utility[key] = agent.base_utility[key] + util_update
+        agent.current_utility[key] = agent.base_utility[key] - util_update
     end
 
     ## For HHAgents within Blockgroup

@@ -21,8 +21,8 @@ function agent_step!(agent::Queue, model::ABM)
 end
  
 function block_step!(agent::BlockGroup, model::ABM)
-    BuildingDevelopment(agent, model; model.build_develop...)
     HousingPricing(agent, model; model.house_price...)
+    BuildingDevelopment(agent, model; model.build_develop...)
 end
  
 #Define model evolution

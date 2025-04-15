@@ -66,7 +66,7 @@ risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = 
 sum([hh_low(agent) for agent in allagents(phil_abm) if agent isa HHAgent && agent.bg_id > 0])
 sum([hh_med(agent) for agent in allagents(phil_abm) if agent isa HHAgent && agent.bg_id > 0])
 sum([hh_high(agent) for agent in allagents(phil_abm) if agent isa HHAgent && agent.bg_id > 0])
-#Income 
+#Budget 
 low_inc = [agent.house_budget for agent in allagents(phil_abm) if agent isa HHAgent && Bool(hh_low(agent))]
 mean(low_inc)
 minimum(low_inc)
@@ -83,7 +83,10 @@ maximum(high_inc)
 sum([occ_low(agent) for agent in allagents(phil_abm) if agent isa BlockGroup])
 sum([occ_med(agent) for agent in allagents(phil_abm) if agent isa BlockGroup])
 sum([occ_high(agent) for agent in allagents(phil_abm) if agent isa BlockGroup])
-
+#check initial vacancies
+sum([agent.available_units[1] for agent in allagents(phil_abm) if agent isa BlockGroup])
+sum([agent.available_units[2] for agent in allagents(phil_abm) if agent isa BlockGroup])
+sum([agent.available_units[3] for agent in allagents(phil_abm) if agent isa BlockGroup])
 #Check Property prices 
 low_prop = filter(:income_cat => f-> f == 1, phil_abm.df)
 med_prop = filter(:income_cat => f-> f == 2, phil_abm.df)

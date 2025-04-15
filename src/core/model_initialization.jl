@@ -22,9 +22,9 @@ end
 function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve; 
     no_of_years = 10, no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33, grouped = false, group_col = "adj_income_2019",
     cutoff_dict = OrderedDict(1=> [0,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7]), bg_cat = Dict(:col =>"income_cat", :group => [1,2,3]), pop_growth_perc = .01, 
-    dist_param = [0.3, 0.4, 0.3], perc_move = 0.025, house_choice_mode = "simple_avoidance_utility", flood_coefficient = -500000, budget_reduction_perc = .90,
+    dist_param = [0.3, 0.4, 0.3], perc_move = 0.025, house_choice_mode = "simple_avoidance_utility", flood_coefficient = 500000, budget_reduction_perc = .90,
     simple_anova_coefficients = Dict(1=> [-121428, 294707, 130553, 128990, 154887, 72443], 2=> [-121428, 294707, 130553, 128990, 154887, 72443], 3=> [-121428, 294707, 130553, 128990, 154887, 72443]), 
-    penalty = -50, stock_increase_mode = "simple_perc",  stock_increase_perc = .05,  housing_pricing_mode = "simple_perc", price_increase_perc = .05,
+    penalty = 50, stock_increase_mode = "simple_perc",  stock_increase_perc = .05,  housing_pricing_mode = "simple_perc", price_increase_perc = .05,
     levee = false, risk_averse = 0.3, flood_mem = 10, fixed_effect = 0, seed = 1500,
 )
 

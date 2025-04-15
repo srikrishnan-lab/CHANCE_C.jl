@@ -26,10 +26,10 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
         #Move agents to desired bg, if possible 
         for (bg_id, cat) in eachrow(unique!(select(bg_demand, [:top_bg, :top_cat])))
             bg_subset = bg_demand[(bg_demand.top_bg .== bg_id) .& (bg_demand.top_cat .== cat), :]
+            model[bg_id].demand_exceeds_supply[cat][model.tick] = nrow(bg_subset) - model[bg_id].available_units[cat]
             if nrow(bg_subset) >= model[bg_id].available_units[cat]
                 #subset df further based on available space
                 bg_subset = first(sort(bg_subset, :hh_income, rev=true), model[bg_id].available_units[cat])
-                model[bg_id].demand_exceeds_supply[cat][model.tick] = true
             end
 
             for hh_id in bg_subset.hh_id

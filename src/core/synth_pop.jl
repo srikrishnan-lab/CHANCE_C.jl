@@ -59,7 +59,7 @@ function create_bg_phil(row, no_of_years; agent_id = 1, categories = [1,2,3], ho
         occupied_units = Dict(categories .=> 0) 
         available_units = Dict(i => row[row.income_cat .== i,:].counts[1] for i in categories) #number of properties in income category
         new_units_constructed = Dict(categories .=> 0)
-        demand_exceeds_supply = Dict(i => repeat([false], no_of_years) for i in categories)
+        demand_exceeds_supply = Dict(i => zeros(no_of_years) for i in categories)
 
         #Calculate agent utility for living in Block Group
         base_utility = Dict(categories .=> 0.0)

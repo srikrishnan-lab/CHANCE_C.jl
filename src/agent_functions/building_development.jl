@@ -14,4 +14,9 @@ function BuildingDevelopment(agent::BlockGroup, model::ABM; stock_increase_mode 
             end
         end
     end
+    #If no units present in category
 end
+
+#ot_cat = [k for k in keys(phil_abm[10].demand_exceeds_supply) if k != 1]
+
+#phil_abm[10].demand_exceeds_supply[ot_cat[1]][2] >= 0.0 && phil_abm[10].demand_exceeds_supply[ot_cat[1]][5] >= 0.0

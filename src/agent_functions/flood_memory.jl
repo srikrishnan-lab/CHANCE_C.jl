@@ -1,5 +1,5 @@
 ## Update Flooded Houses
-function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 0.0, flood_coef = 500000)
+function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 0.0, flood_coef = 500000, penalty = 50)
     
     year = model.tick
     ##Record number of floods in the last mem years
@@ -29,6 +29,6 @@ function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 
         #Calculate remembered flood experience
         model[hh_id].flood_experience = sum(model[hh_id].flood_hazard[time_back])/length(time_back)
         #Update HHagent utility
-        model[hh_id].utility[agent.id] = agent.current_utility[model[hh_id].occ_cat]
+        model[hh_id].utility[agent.id] = agent.current_utility[model[hh_id].occ_cat] - ((model[hh_id].group - model[hh_id].occ_cat) * penalty)
     end  
 end

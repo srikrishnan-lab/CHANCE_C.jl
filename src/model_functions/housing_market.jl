@@ -9,7 +9,7 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
         if length(moving_agents) < 1
             break
         end
-        bg_demand = DataFrame(top_bg = Int64[], top_cat = Int64[], hh_id = Int64[], hh_income = Float64[])
+        bg_demand = DataFrame(top_bg = Int64[], top_cat = Int64[], hh_id = Int64[], hh_income = Float64[], hh_util = Float64[])
 
         for id in moving_agents
             hh_utilities_subset = model.hh_utilities_df[model.hh_utilities_df.hh_id .== id, :] #Subset hh_utilities_df based on agent choices
@@ -17,7 +17,8 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
             try
                 top_bg = hh_utilities_subset[market_iter, :bg_id] # get the bg name for the top candidate (excluding previous top candidates from previous iterations)
                 top_cat = hh_utilities_subset[market_iter, :cat] # get the category name of bg for the top candidate (excluding previous top candidates from previous iterations)
-                push!(bg_demand, [top_bg, top_cat, id, model[id].income]) #add bg id, agent id, and agent income to bg_demand
+                top_util = hh_utilities_subset[market_iter, :bg_utility] # get the agent utility of bg for the top candidate (includes penalty for category mismatch)
+                push!(bg_demand, [top_bg, top_cat, id, model[id].income, top_util]) #add bg id, house category, agent id, agent income, and agent utility to bg_demand
             catch
                 #if index is out of range, means agent has gone through all affordable options
                 remove_agent!(model[id], model) #remove agent
@@ -38,7 +39,7 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
                 #Update bg_id, utility,  year of residence of agent
                 setproperty!(model[hh_id], :bg_id, bg_id)
                 setproperty!(model[hh_id], :occ_cat, cat)
-                setproperty!(model[hh_id], :utility, Dict(bg_id => model[bg_id].current_utility[cat]))
+                setproperty!(model[hh_id], :utility, Dict(bg_id => bg_demand[(bg_demand.hh_id .== hh_id) .& (bg_demand.top_bg .== bg_id) .& (bg_demand.top_cat .== cat), :hh_util][1]))#Dict(bg_id => model[bg_id].current_utility[cat]))
                 setproperty!(model[hh_id], :year_of_residence, model.tick)
                 #update bg attributes
                 model[bg_id].occupied_units[cat] += 1

@@ -30,8 +30,8 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
 
     
     ##Create Keyword Arguments for step function parameters
-    #Agent relocation
-    flood_hazard = Dict(:mem => flood_mem, :levee => levee, :f_e => fixed_effect, :flood_coef => flood_coefficient)
+    #Flood Hazard & Flood Disamenity Updating
+    flood_hazard = Dict(:mem => flood_mem, :levee => levee, :f_e => fixed_effect, :flood_coef => flood_coefficient, :penalty => penalty)
     #AgentCreation
     agent_creation = Dict(:growth_rate => pop_growth_perc)
 

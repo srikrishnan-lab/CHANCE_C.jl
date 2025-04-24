@@ -17,6 +17,9 @@ function calc_utility(row, house_choice_mode; levee = false, f_e = 0.0,
         util = anova_coef[1] + (anova_coef[2] * row.total_livable_area) + (anova_coef[3] * row.house_age) + (anova_coef[4] * row.stories_n) + 
         (anova_coef[5] * row.number_of_bathrooms) + (anova_coef[5] * (row.cbd_dist_norm + row.water_dist_norm)) #(scale_factor * flood_coef * (model[Int(prop.GEOID)].flood_hazard/model.relo_sampler[:mem])) #+ (1 * row.residuals)
 
+    elseif house_choice_mode == "flood_ind_utility" #Treats amenities as an index
+        util = (anova_coef[1] * (row.total_livable_area + row.stories_n)) + (anova_coef[2] * (row.cbd_dist_norm + row.water_dist_norm))
+
     else #house_choice_mode == "simple_anova_utility" or house_choice_mode == "budget_reduction" or house_choice_mode == "simple_avoidance_utility"
         util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
         (anova_coef[5] * row.N_MeanFullBathNumber) + (1 * row.residuals)
@@ -65,7 +68,7 @@ function create_bg_phil(row, no_of_years; agent_id = 1, categories = [1,2,3], ho
         base_utility = Dict(categories .=> 0.0)
         for cat in categories
             utility = calc_utility(row[row.income_cat .== cat,:][1,:], house_choice_mode; anova_coef = simple_anova_coefficients[cat])
-            base_utility[cat] = ismissing(utility) ? 0.0 : utility
+            base_utility[cat] = ismissing(utility) ? -90000.0 : utility
         end
          
 

@@ -150,6 +150,10 @@ function flood_history(base_df; no_of_years = 10, start_year = 1981, slr_scen = 
     #Convert df to matrix
     flood_mat = zeros(size(flood_df)[1], size(flood_df)[2], 1)
     flood_mat[:,:,1] = Matrix(flood_df)
+    #Normalize flood extents
+    if std(flood_mat[:,:,1]) != 0
+        flood_mat[:,:,1] = (flood_mat[:,:,1] .- mean(flood_mat[:,:,1])) ./ std(flood_mat[:,:,1])
+    end
 
     scen_record = Int.(ones(no_of_years))
     #create dictionary of flood scenario and model year for each model year

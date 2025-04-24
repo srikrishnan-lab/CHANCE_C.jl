@@ -4,7 +4,7 @@
 
 #Load Project Environment
 import Pkg
-Pkg.activate(dirname(@__DIR__))
+Pkg.activate(".")
 Pkg.instantiate()
 
 #Load Packages
@@ -25,7 +25,7 @@ f_df = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data", "synth_flood_phil.
 
 ##For BG
 #open bg file
-phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019.csv")))
+phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019_v2.csv")))
 
 ##load pop data
 phil_cbsa_base_pop = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data/model_inputs/pop_files/philly_cbsa_pop_0.csv")))
@@ -47,12 +47,13 @@ grouped = true
 group_col = "adj_income_2019"
 cutoff_dict = OrderedDict(1 => [-60000.00,25000.00], 2 =>[25000.00,75000.00], 3 =>[75000.00, 1e7]) #1=> "low income", 2=> "medium income", 3=> "high income"
 bg_cat = Dict(:col =>"income_cat", :group => [1,2,3])
-simple_anova_coefficients = Dict(1=> [0, 294707, 130553, 128990, 154887, 72443], 2=> [0, 294707, 130553, 128990, 154887, 72443], 3=> [0, 294707, 130553, 128990, 154887, 72443])
+simple_anova_coefficients = Dict(1=> [0.5, 0.5], 2=> [0.5, 0.5], 3=> [0.5, 0.5])
 house_budget_mode = "rhea"
-house_choice_mode = "flood_mem_utility"
+house_choice_mode = "flood_ind_utility"
 risk_averse = 0.5
 base_move = 0.01
 flood_mem = 10
+flood_coefficient = 0.5
 seed = 1500
 
 # Calculate Flood matrix and Dict for ABM input
@@ -60,7 +61,7 @@ f_matrix, f_dict = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start
 #Initialize model 
 phil_abm = CHANCE_C.Simulator(phil_bg, phil_base_pop, f_matrix, f_dict, CHANCE_C.model_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
 house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
-risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
+simple_anova_coefficients = simple_anova_coefficients, risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
 
 #Check initial propulation counts, avg income
 sum([hh_low(agent) for agent in allagents(phil_abm) if agent isa HHAgent && agent.bg_id > 0])

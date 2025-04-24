@@ -1,4 +1,4 @@
-# CHANCE-C Julia (v1.1)
+# CHANCE-C Julia (v1.2)
 
 A Julia port of the python-based CHANCE-C ABM Framework.
 

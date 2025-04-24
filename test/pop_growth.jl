@@ -61,7 +61,7 @@ f_matrix, f_dict = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start
 #Initialize model 
 phil_abm = CHANCE_C.Simulator(phil_bg, phil_base_pop, f_matrix, f_dict, CHANCE_C.model_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
 house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
-simple_anova_coefficients = simple_anova_coefficients, risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
+pop_growth_perc = growth_rate, simple_anova_coefficients = simple_anova_coefficients, risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
 
 #Check initial propulation counts, avg income
 sum([hh_low(agent) for agent in allagents(phil_abm) if agent isa HHAgent && agent.bg_id > 0])

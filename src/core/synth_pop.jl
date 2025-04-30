@@ -93,7 +93,7 @@ end
 
 
 ## For HHAgent Agents
-function agent_bin_cont(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64, group_col::String, cutoffs::OrderedDict{Int64, Vector{Float64}}, house_budget_mode::String, hh_budget_perc::Float64)
+function agent_bin_cont(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64, group_col::String, cutoffs::OrderedDict{Int64, Vector{Float64}}, house_budget_mode::String, hh_budget_perc::Float64, rhea_coef::Float64)
     bg_df = subset(pop_df, :GEOID => x -> x .== bg_id) 
     
     #Calculate number of vacant households within BG
@@ -125,7 +125,7 @@ function agent_bin_cont(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64
     
     #Calculate agent budgets
     if house_budget_mode == "rhea"
-        agent_df.budget = exp.(4.96 .+ (0.63 .* log.(agent_df.avg_income)))
+        agent_df.budget = exp.(4.96 .+ (rhea_coef .* log.(agent_df.avg_income)))
     elseif house_budget_mode == "perc"
         agent_df.budget = agent_df.avg_income .* (1 + hh_budget_perc)
     end
@@ -143,7 +143,7 @@ end
 
 
 ##For this function, Household agents are created within each block group, We'll subset by the given input block group, then group by a categorical category, such as race.
-function agent_bin_cat(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64, group_col::String, house_budget_mode::String, hh_budget_perc::Float64)
+function agent_bin_cat(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64, group_col::String, house_budget_mode::String, hh_budget_perc::Float64, rhea_coef::Float64)
     bg_df = subset(pop_df, :GEOID => x -> x .== bg_id) 
     
     #Calculate number of vacant households within BG
@@ -174,7 +174,7 @@ function agent_bin_cat(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64,
     #Calculate agent budgets
     if house_budget_mode == "rhea"
         transform!(agent_df, )
-        agent_df.budget = exp.(4.96 .+ (0.63 .* log.(agent_df.avg_income)))
+        agent_df.budget = exp.(4.96 .+ (rhea_coef .* log.(agent_df.avg_income)))
     elseif house_budget_mode == "perc"
         agent_df.budget = agent_df.avg_income .* (1 + hh_budget_perc)
     end

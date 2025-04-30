@@ -25,7 +25,7 @@ f_df = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data", "synth_flood_phil.
 
 ##For BG
 #open bg file
-phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019_v2.csv")))
+phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019_v1.csv")))
 
 ##load pop data
 phil_cbsa_base_pop = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data/model_inputs/pop_files/philly_cbsa_pop_0.csv")))
@@ -42,26 +42,31 @@ phil_base_pop = subset(phil_cbsa_base_pop, :county => x -> x .== 42101)
 no_of_years = 39
 start_year = 1981
 no_hhs_per_agent=10
-growth_rate = 0.00
+growth_rate = 0.043
 grouped = true
 group_col = "adj_income_2019"
 cutoff_dict = OrderedDict(1 => [-60000.00,25000.00], 2 =>[25000.00,75000.00], 3 =>[75000.00, 1e7]) #1=> "low income", 2=> "medium income", 3=> "high income"
 bg_cat = Dict(:col =>"income_cat", :group => [1,2,3])
-simple_anova_coefficients = Dict(1=> [0.5, 0.5], 2=> [0.5, 0.5], 3=> [0.5, 0.5])
+util_coef = Dict(1=> [0.5, 0.5], 2=> [0.5, 0.5], 3=> [0.5, 0.5])
 house_budget_mode = "rhea"
+rhea_coef = 0.7
 house_choice_mode = "flood_ind_utility"
+penalty = 10
+flood_coefficient = 0.5
+build_inc_perc = 0.1
+price_inc_perc = 0.1
 risk_averse = 0.5
 base_move = 0.01
 flood_mem = 10
-flood_coefficient = 0.5
 seed = 1500
 
 # Calculate Flood matrix and Dict for ABM input
 f_matrix, f_dict = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start_year = start_year)
 #Initialize model 
 phil_abm = CHANCE_C.Simulator(phil_bg, phil_base_pop, f_matrix, f_dict, CHANCE_C.model_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
-house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
-pop_growth_perc = growth_rate, simple_anova_coefficients = simple_anova_coefficients, risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
+house_budget_mode = house_budget_mode, rhea_coef = rhea_coef, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
+simple_anova_coefficients = util_coef, flood_coefficient = flood_coefficient, penalty = penalty, pop_growth_perc = growth_rate, stock_increase_perc = build_inc_perc, price_increase_perc = price_inc_perc,
+risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
 
 #Check initial propulation counts, avg income
 sum([hh_low(agent) for agent in allagents(phil_abm) if agent isa HHAgent && agent.bg_id > 0])

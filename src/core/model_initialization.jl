@@ -141,7 +141,7 @@ function Simulator(bg_df, pop_df, f_matrix, f_dict, model_evolve;
 
         #Add agent to model
         add_agent!(model[-1].pos, HHAgent, model, -1, row.nrow, row.cat, 0, row.race, Int(round(row.avg_hh_size)), 
-        Float64(row.avg_income), Dict(-1 => -90000.0), house_budget_mode, model.tick, simple_avoidance_perc, zeros(no_of_years), 0, agent_avoid, row.budget, hh_budget_perc)
+        Float64(row.avg_income), Dict(-1 => 0.0), house_budget_mode, model.tick, simple_avoidance_perc, zeros(no_of_years), 0, agent_avoid, row.budget, hh_budget_perc)
     end
 
     #model.avg_hh_income = mean([a.income for a in allagents(model) if a isa HHAgent])

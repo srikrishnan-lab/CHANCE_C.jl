@@ -1,7 +1,7 @@
 
 ### For timing of model executions and specific evolution functions
 import Pkg
-Pkg.activate(dirname(@__DIR__))
+Pkg.activate(".")
 Pkg.instantiate()
 
 include(joinpath(dirname(@__DIR__), "src/CHANCE_C.jl"))
@@ -25,8 +25,8 @@ select!(phil_flood_rec, "GEOID", "1981", "1982", Not(["1982", "2019"]), "2019")
 
 ##For BG
 #open bg file
-phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/philly_bg_2019.csv")))
-phil_flood_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019.csv")))
+#phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/philly_bg_2019.csv")))
+phil_flood_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019_v1.csv")))
 #groupby BG
 #grouped_phil_bg = groupby(phil_flood_bg, :GEOID)
 
@@ -43,15 +43,22 @@ inc_bot_10 = quantile(subset(phil_cbsa_base_pop, [:NP .=> ByRow(>(0)), :adj_inco
 no_of_years = 39
 start_year = 1981
 no_hhs_per_agent=10
+growth_rate = 0.01
 grouped = true
 group_col = "adj_income_2019"
-cutoff_dict = OrderedDict(1=> [-60000.00,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7])
+cutoff_dict = OrderedDict(1 => [-60000.00,25000.00], 2 =>[25000.00,75000.00], 3 =>[75000.00, 1e7]) #1=> "low income", 2=> "medium income", 3=> "high income"
 bg_cat = Dict(:col =>"income_cat", :group => [1,2,3])
+util_coef = Dict(1=> [0.5, 0.5], 2=> [0.5, 0.5], 3=> [0.5, 0.5])
 house_budget_mode = "rhea"
-house_choice_mode = "flood_mem_utility"
+rhea_coef = 0.7
+house_choice_mode = "flood_ind_utility"
+penalty = 0.5
+flood_coefficient = 0.5
+build_inc_perc = 0.1
+price_inc_perc = 0.1
 risk_averse = 0.5
+base_move = 0.01
 flood_mem = 10
-growth_rate = 0.01
 seed = 1500
 
 tmr = TimerOutput()
@@ -70,8 +77,8 @@ function ag_step!(agent::CHANCE_C.Queue, model::ABM)
 end
  
 function bl_step!(agent::CHANCE_C.BlockGroup, model::ABM)
-    CHANCE_C.BuildingDevelopment(agent, model; model.build_develop...)
     CHANCE_C.HousingPricing(agent, model; model.house_price...)
+    CHANCE_C.BuildingDevelopment(agent, model; model.build_develop...)
 end
 
 #Define model evolution
@@ -130,8 +137,9 @@ f_matrix, f_dict = CHANCE_C.flood_history(phil_flood_rec; no_of_years = no_of_ye
 
 ### Initialize ABM
 phil_abm = CHANCE_C.Simulator(phil_flood_bg, phil_cbsa_base_pop, f_matrix, f_dict, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
-house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
-pop_growth_perc = growth_rate, risk_averse = risk_averse, flood_mem = flood_mem, seed = seed)
+house_budget_mode = house_budget_mode, rhea_coef = rhea_coef, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
+simple_anova_coefficients = util_coef, flood_coefficient = flood_coefficient, penalty = penalty, pop_growth_perc = growth_rate, stock_increase_perc = build_inc_perc, price_increase_perc = price_inc_perc,
+risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
 
 step!(phil_abm, no_of_years)
 show(tmr)
@@ -139,8 +147,9 @@ reset_timer!(tmr)
 
 ##Performance Measure 
 b = @benchmarkable step!(phil_abm, no_of_years) setup=(phil_abm = CHANCE_C.Simulator(phil_flood_bg, phil_cbsa_base_pop, f_matrix, f_dict, evo_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
-house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
-risk_averse = risk_averse, flood_mem = flood_mem, seed = seed)) seconds=1800 evals=1 samples = 10
+house_budget_mode = house_budget_mode, rhea_coef = rhea_coef, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
+simple_anova_coefficients = util_coef, flood_coefficient = flood_coefficient, penalty = penalty, pop_growth_perc = growth_rate, stock_increase_perc = build_inc_perc, price_increase_perc = price_inc_perc,
+risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)) seconds=1800 evals=1 samples = 10
 
 v1_1_time = run(b)
 BenchmarkTools.save(joinpath(@__DIR__, "benchmarks/time_v1-1.json"), v1_1_time)

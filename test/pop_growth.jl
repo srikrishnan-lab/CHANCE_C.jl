@@ -42,14 +42,14 @@ phil_base_pop = subset(phil_cbsa_base_pop, :county => x -> x .== 42101)
 no_of_years = 39
 start_year = 1981
 no_hhs_per_agent=10
-growth_rate = 0.043
+growth_rate = 0.01
 grouped = true
 group_col = "adj_income_2019"
 cutoff_dict = OrderedDict(1 => [-60000.00,25000.00], 2 =>[25000.00,75000.00], 3 =>[75000.00, 1e7]) #1=> "low income", 2=> "medium income", 3=> "high income"
 bg_cat = Dict(:col =>"income_cat", :group => [1,2,3])
 util_coef = Dict(1=> [0.5, 0.5], 2=> [0.5, 0.5], 3=> [0.5, 0.5])
 house_budget_mode = "rhea"
-rhea_coef = 0.7
+rhea_coef = 0.70
 house_choice_mode = "flood_ind_utility"
 penalty = 10
 flood_coefficient = 0.5

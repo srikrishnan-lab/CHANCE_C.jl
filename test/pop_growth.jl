@@ -25,7 +25,7 @@ f_df = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data", "synth_flood_phil.
 
 ##For BG
 #open bg file
-phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019_v1.csv")))
+phil_bg = DataFrame(CSV.File(joinpath(dirname(@__DIR__), "data/phil_flood_bg_2019_nomiss_v1.csv")))
 
 ##load pop data
 phil_cbsa_base_pop = DataFrame(CSV.File(joinpath(dirname(dirname(@__DIR__)), "philadelphia-data/model_inputs/pop_files/philly_cbsa_pop_0.csv")))

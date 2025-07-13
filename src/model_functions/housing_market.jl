@@ -2,7 +2,7 @@
 Housing Market could probably be simplified using a group-split-combine scheme instead of iterating over agents
 """
 
-function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size = 10) #start with just relocating Queue
+function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size = 10, stay_prob = 1.0) #start with just relocating Queue
     for market_iter in 1:bg_sample_size
         moving_agents = [id for id in ids_in_position(model[0], model) if model[id] isa HHAgent]
         #Check to see if relocating queue is empty
@@ -21,7 +21,23 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
                 push!(bg_demand, [top_bg, top_cat, id, model[id].income, top_util]) #add bg id, house category, agent id, agent income, and agent utility to bg_demand
             catch
                 #if index is out of range, means agent has gone through all affordable options
-                remove_agent!(model[id], model) #remove agent
+                last_bg = model[first(keys(model[id].utility))]
+                if last_bg.id == -1 || last_bg.available_units[model[id].occ_cat] <= 0
+                    remove_agent!(model[id], model)
+                    continue
+                end
+                    
+                if rand(abmrng(model), Binomial(1, stay_prob)) == 1
+                    #Revert HHAgent Properties
+                    setproperty!(model[id], :bg_id, last_bg.id)
+                    move_agent!(model[id], last_bg.pos, model)
+                    #Update Last BG Properties
+                    last_bg.occupied_units[model[id].occ_cat] += 1
+                    last_bg.available_units[model[id].occ_cat] -= 1
+                    last_bg.population += getproperty(model[id], :no_hhs_per_agent) * getproperty(model[id], :hh_size)
+                else
+                    remove_agent!(model[id], model)
+                end
             end
         end
         #Move agents to desired bg, if possible 
@@ -53,5 +69,27 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
     end
 
     #for any households remaining in queues, assume they migrate
-    remove_agent!.([a for a in agents_in_position(model[0], model) if a isa HHAgent], Ref(model))
+    for a in collect(agents_in_position(model[0], model)) 
+        if a isa HHAgent
+            last_bg = model[first(keys(a.utility))]
+            if last_bg.id == -1 || last_bg.available_units[a.occ_cat] <= 0
+                remove_agent!(a, model)
+                continue
+            end
+            
+            if rand(abmrng(model), Binomial(1, stay_prob)) == 1
+                #Revert HHAgent Properties
+                setproperty!(a, :bg_id, last_bg.id)
+                move_agent!(a, last_bg.pos, model)
+                #Update Last BG Properties
+                last_bg.occupied_units[a.occ_cat] += 1
+                last_bg.available_units[a.occ_cat] -= 1
+                last_bg.population += getproperty(a, :no_hhs_per_agent) * getproperty(a, :hh_size)
+            else
+                remove_agent!(a, model)
+            end
+        else
+            continue
+        end
+    end
 end

@@ -43,7 +43,7 @@ function model_step!(model::ABM)
     end
  
     #run Housing Market to move HHAgents to desired locations
-    HousingMarket(model)
+    HousingMarket(model;model.hh_market...)
  
     #Update BlockGroup conditions
     for id in filter!(id -> model[id] isa BlockGroup, collect(Agents.schedule(model)))

@@ -1,7 +1,7 @@
 
 
 mutable struct Properties{df<:Union{DataFrame, GroupedDataFrame{DataFrame}}, t_p<:Int64, f_h<:Dict, a_c<:Dict, r_s<:Dict, a_r<:Dict, b_d<:Dict,
-     h_p<:Dict, u_hhs<:DataFrame, no_y<:Int64, f_mat<:Array, f_dict<:Dict, tick<:Int64}
+     h_m<:Dict, h_p<:Dict, u_hhs<:DataFrame, no_y<:Int64, f_mat<:Array, f_dict<:Dict, tick<:Int64}
     df::df
     total_population::t_p
     flood_hazard::f_h
@@ -9,6 +9,7 @@ mutable struct Properties{df<:Union{DataFrame, GroupedDataFrame{DataFrame}}, t_p
     relo_sampler::r_s
     agent_relocate::a_r
     build_develop::b_d
+    hh_market::h_m
     house_price::h_p
     hh_utilities_df::u_hhs
     no_of_years::no_y
@@ -25,7 +26,7 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
     dist_param = [0.3, 0.4, 0.3], perc_move = 0.025, house_choice_mode = "simple_avoidance_utility", flood_coefficient = 500000, budget_reduction_perc = .90,
     simple_anova_coefficients = Dict(1=> [-121428, 294707, 130553, 128990, 154887, 72443], 2=> [-121428, 294707, 130553, 128990, 154887, 72443], 3=> [-121428, 294707, 130553, 128990, 154887, 72443]), 
     penalty = 50, stock_increase_mode = "simple_perc",  stock_increase_perc = .05,  housing_pricing_mode = "simple_perc", price_increase_perc = .05,
-     standardization = "min-max", levee = false, risk_averse = 0.3, flood_mem = 10, fixed_effect = 0, seed = 1500,
+     standardization = "min-max", bg_sample_size = 10, stay_prob = 1.0, levee = false, risk_averse = 0.3, flood_mem = 10, fixed_effect = 0, seed = 1500,
 )
     ##Calculate Flood matrix and Dict for ABM input
     #Ensure that only BGs present in bg_df are selected in f_df
@@ -46,6 +47,9 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
     #BuildingDevelopment
     build_develop = Dict(:stock_increase_mode => stock_increase_mode, :stock_increase_perc => stock_increase_perc)
 
+    #HousingMarket
+    house_market = Dict(:bg_sample_size => bg_sample_size, :stay_prob => stay_prob)
+
     #HousingPricing
     house_price = Dict(:housing_pricing_mode => housing_pricing_mode, :price_increase_perc => price_increase_perc)
 
@@ -60,7 +64,7 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
         space = GridSpace((width,width))
     end
 
-    parameters = Properties(bg_df, 0, flood_hazard, agent_creation, averse_move, agent_relocate, build_develop, house_price,
+    parameters = Properties(bg_df, 0, flood_hazard, agent_creation, averse_move, agent_relocate, build_develop, house_market, house_price,
      DataFrame(hh_id = Int64[], bg_id = Int64[], GEOID = Int64[], cat = Int64[], bg_utility = Float64[]), no_of_years, f_matrix, f_dict, 0)
 
     model = ABM(

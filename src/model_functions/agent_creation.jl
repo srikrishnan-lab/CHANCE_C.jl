@@ -1,6 +1,6 @@
 
 function NewAgentCreation(pop_df::DataFrame, model::ABM; no_of_years = 10, growth_rate = 0.01, dist_param = [0.3, 0.4, 0.3], group_col = "adj_income_2019",
-    cutoffs = OrderedDict(1=> [0,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7]), no_hhs_per_agent = 10, house_budget_mode = "perc", hh_budget_perc = 0.33)
+    cutoffs = OrderedDict(1=> [0,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7]), no_hhs_per_agent = 10, house_budget_mode = "perc", hh_budget_perc = 0.33, rhea_coef = 0.63)
 
     ##Calculate max number of migrating agents based on initial model pop and growth rate
     initial_pop = length([a for a in allagents(model) if a isa HHAgent])
@@ -31,7 +31,7 @@ function NewAgentCreation(pop_df::DataFrame, model::ABM; no_of_years = 10, growt
 
     #Calculate agent budgets
     if house_budget_mode == "rhea"
-        agent_df.budget = exp.(4.96 .+ (0.63 .* log.(agent_df.avg_income)))
+        agent_df.budget = exp.(4.96 .+ (rhea_coef .* log.(agent_df.avg_income)))
     elseif house_budget_mode == "perc"
         agent_df.budget = agent_df.avg_income .* (1 + hh_budget_perc)
     end

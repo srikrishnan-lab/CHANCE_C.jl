@@ -17,6 +17,9 @@ function calc_utility(row, house_choice_mode; levee = false, f_e = 0.0,
         util = anova_coef[1] + (anova_coef[2] * row.total_livable_area) + (anova_coef[3] * row.house_age) + (anova_coef[4] * row.stories_n) + 
         (anova_coef[5] * row.number_of_bathrooms) + (anova_coef[5] * (row.cbd_dist_norm + row.water_dist_norm)) #(scale_factor * flood_coef * (model[Int(prop.GEOID)].flood_hazard/model.relo_sampler[:mem])) #+ (1 * row.residuals)
 
+    elseif house_choice_mode == "flood_ind_utility" #Treats amenities as an index
+        util = (anova_coef[1] * (row.total_livable_area + row.stories_n)) + (anova_coef[2] * (row.cbd_dist_norm + row.water_dist_norm))
+
     else #house_choice_mode == "simple_anova_utility" or house_choice_mode == "budget_reduction" or house_choice_mode == "simple_avoidance_utility"
         util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
         (anova_coef[5] * row.N_MeanFullBathNumber) + (1 * row.residuals)
@@ -65,7 +68,7 @@ function create_bg_phil(row, no_of_years; agent_id = 1, categories = [1,2,3], ho
         base_utility = Dict(categories .=> 0.0)
         for cat in categories
             utility = calc_utility(row[row.income_cat .== cat,:][1,:], house_choice_mode; anova_coef = simple_anova_coefficients[cat])
-            base_utility[cat] = ismissing(utility) ? 0.0 : utility
+            base_utility[cat] = ismissing(utility) ? -90000.0 : utility
         end
          
 
@@ -90,7 +93,7 @@ end
 
 
 ## For HHAgent Agents
-function agent_bin_cont(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64, group_col::String, cutoffs::OrderedDict{Int64, Vector{Float64}}, house_budget_mode::String, hh_budget_perc::Float64)
+function agent_bin_cont(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64, group_col::String, cutoffs::OrderedDict{Int64, Vector{Float64}}, house_budget_mode::String, hh_budget_perc::Float64, rhea_coef::Float64)
     bg_df = subset(pop_df, :GEOID => x -> x .== bg_id) 
     
     #Calculate number of vacant households within BG
@@ -122,7 +125,7 @@ function agent_bin_cont(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64
     
     #Calculate agent budgets
     if house_budget_mode == "rhea"
-        agent_df.budget = exp.(4.96 .+ (0.63 .* log.(agent_df.avg_income)))
+        agent_df.budget = exp.(4.96 .+ (rhea_coef .* log.(agent_df.avg_income)))
     elseif house_budget_mode == "perc"
         agent_df.budget = agent_df.avg_income .* (1 + hh_budget_perc)
     end
@@ -140,7 +143,7 @@ end
 
 
 ##For this function, Household agents are created within each block group, We'll subset by the given input block group, then group by a categorical category, such as race.
-function agent_bin_cat(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64, group_col::String, house_budget_mode::String, hh_budget_perc::Float64)
+function agent_bin_cat(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64, group_col::String, house_budget_mode::String, hh_budget_perc::Float64, rhea_coef::Float64)
     bg_df = subset(pop_df, :GEOID => x -> x .== bg_id) 
     
     #Calculate number of vacant households within BG
@@ -171,7 +174,7 @@ function agent_bin_cat(bg_id::Int64, pop_df::DataFrame; no_hhs_per_agent::Int64,
     #Calculate agent budgets
     if house_budget_mode == "rhea"
         transform!(agent_df, )
-        agent_df.budget = exp.(4.96 .+ (0.63 .* log.(agent_df.avg_income)))
+        agent_df.budget = exp.(4.96 .+ (rhea_coef .* log.(agent_df.avg_income)))
     elseif house_budget_mode == "perc"
         agent_df.budget = agent_df.avg_income .* (1 + hh_budget_perc)
     end

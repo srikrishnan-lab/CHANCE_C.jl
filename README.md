@@ -1,4 +1,4 @@
-# CHANCE-C Julia (v1.1)
+# CHANCE-C Julia (v1.2)
 
 A Julia port of the python-based CHANCE-C ABM Framework.
 
@@ -20,16 +20,16 @@ A dataframe of Block Group attributes must first be created in order to calculat
 
 ### Software Requirements
 
-This model requires [Julia 1.7.0](https://julialang.org/) or newer to run. Download Julia [here](https://julialang.org/downloads/).
+This model requires [Julia 1.10.0](https://julialang.org/) or newer to run. Download Julia [here](https://julialang.org/downloads/).
 
-Additionally, CHANCE-C 1.1 uses v5.14 of Agents.jl to run the model.  **This model version is incompatible with v6.0 or later of Agents.jl.** For general information about Agents.jl and its capabilities, please read the package [docs](https://juliadynamics.github.io/Agents.jl/v5.14/).
+Additionally, CHANCE-C 1.2 uses v6.2 of Agents.jl to run the model. For general information about Agents.jl and its capabilities, please read the package [docs](https://juliadynamics.github.io/Agents.jl/v5.14/).
 
 ### Installing CHANCE_C
 
 To install this version of CHANCE_C, access the Pkg REPL and execute the following command:
 
 ```julia-repl
-pkg> add https://github.com/srikrishnan-lab/CHANCE_C.jl#dynamic_ff
+pkg> add https://github.com/srikrishnan-lab/CHANCE_C.jl#synth_pop
 ```
 
 Note: It is best practice to set up a julia project environment prior to installing this package and running the model. For an explanation on the julia project environment and accessing the Pkg Repl in Julia, read the [Package docs](https://pkgdocs.julialang.org/v1/getting-started/).

@@ -165,7 +165,7 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
                 loc_utilities = [model[geoid_to_bg[row.GEOID]].current_utility[row.income_cat] - ((hh_agent.group - row.income_cat) * penalty) for row in eachrow(bg_budget[sampled_indices, [:GEOID, :income_cat]])]
                 # Find indices of block groups with better utilities than current agent location
                 current_utility = first(values(hh_agent.utility))
-                util_diff = (current_utility - maximum(loc_utilities)) / current_utility
+                util_diff = (current_utility - maximum(loc_utilities)) #/ current_utility
                 opt_locs = findall(>(current_utility), loc_utilities)
 
                 # Check if any moves are possible

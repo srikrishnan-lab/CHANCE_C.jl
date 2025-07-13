@@ -4,7 +4,7 @@
 
 #Load Project Environment
 import Pkg
-Pkg.activate(dirname(@__DIR__))
+Pkg.activate(".")
 Pkg.instantiate()
 
 #Load Packages
@@ -42,7 +42,7 @@ phil_base_pop = subset(phil_cbsa_base_pop, :county => x -> x .== 42101)
 no_of_years = 39
 start_year = 1981
 no_hhs_per_agent=10
-growth_rate = 0.00
+growth_rate = 0.01
 grouped = true
 group_col = "adj_income_2019"
 cutoff_dict = OrderedDict(1 => [-60000.00,25000.00], 2 =>[25000.00,75000.00], 3 =>[75000.00, 1e7]) #1=> "low income", 2=> "medium income", 3=> "high income"
@@ -60,8 +60,8 @@ f_matrix, f_dict = CHANCE_C.flood_history(f_df; no_of_years = no_of_years, start
 #Initialize model 
 phil_abm = CHANCE_C.Simulator(phil_bg, phil_base_pop, f_matrix, f_dict, CHANCE_C.model_step!; no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
 house_budget_mode = house_budget_mode, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
-risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
-
+pop_growth_perc = growth_rate, risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, seed = seed)
+#Check total units 
 #Check initial propulation counts, avg income
 sum([hh_low(agent) for agent in allagents(phil_abm) if agent isa HHAgent && agent.bg_id > 0])
 sum([hh_med(agent) for agent in allagents(phil_abm) if agent isa HHAgent && agent.bg_id > 0])

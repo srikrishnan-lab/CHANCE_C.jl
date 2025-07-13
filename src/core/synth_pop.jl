@@ -73,7 +73,7 @@ function create_bg_phil(row, no_of_years; agent_id = 1, categories = [1,2,3], ho
          
 
         new_bg = BlockGroup(agent_id,(0,0),row.GEOID[1], row.ALAND[1], 
-    0, row.perc_flpn_area[1], 0, 0, 0.0, 0.0, 0, 0.0, base_utility, base_utility, new_price, 0, occupied_units, available_units, 
+    0, row.perc_flpn_area[1], 0, 0, 0.0, 0.0, 0, 0.0, copy(base_utility), copy(base_utility), new_price, 0, occupied_units, available_units, 
     0.0, demand_exceeds_supply, new_units_constructed, 0.0, 0.0, 0.0)
     
     elseif typeof(row) == DataFrameRow{DataFrame, DataFrames.Index}

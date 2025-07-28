@@ -13,6 +13,8 @@ function agent_step!(agent::HHAgent, model::ABM)
 end
  
 function agent_step!(agent::BlockGroup, model::ABM)
+    #clear migrating agents Dict
+    map!(x->0, values(agent.new_agents))
     flooded!(agent, model; model.flood_hazard...)
 end
  
@@ -80,7 +82,7 @@ function evolve!(model::ABM)
             agent_step!(model[id],model)
         end
     end
-    LocationUpdate(model;grouped = model.build_develop[:grouped])
+    LocationUpdate(model)
     #run Housing Market to move HHAgents to desired locations
     HouseMarket(model; model.hh_market...)
 
@@ -94,6 +96,6 @@ function evolve!(model::ABM)
         end
 
     end
-    LocationUpdate(model;grouped = model.build_develop[:grouped])
+    LocationUpdate(model)
     model.total_population = sum([a.population for a in allagents(model) if a isa BlockGroup])
 end

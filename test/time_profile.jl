@@ -54,7 +54,7 @@ growth_rate = 0.01
 grouped = true
 group_col = "adj_income_2019"
 cutoff_dict = OrderedDict(1 => [-60000.00,25000.00], 2 =>[25000.00,75000.00], 3 =>[75000.00, 1e7]) #1=> "low income", 2=> "medium income", 3=> "high income"
-bg_cat = Dict(:col =>"income_cat", :group => [1,2,3])
+bg_cat = Dict(:col =>"income_cat", :occ_cat => [1,2,3])
 util_coef = Dict(1=> [0.5, 0.5], 2=> [0.5, 0.5], 3=> [0.5, 0.5])
 house_budget_mode = "rhea"
 rhea_coef = 0.70
@@ -80,6 +80,8 @@ function ag_step!(agent::CHANCE_C.HHAgent, model::ABM)
 end
  
 function ag_step!(agent::CHANCE_C.BlockGroup, model::ABM)
+    #clear migrating agents Dict
+    map!(x->0, values(agent.new_agents))
     CHANCE_C.flooded!(agent, model; model.flood_hazard...)    
 end
  
@@ -161,7 +163,7 @@ function evo_alt_step!(model::ABM)
         end
     end
     @timeit tmr "Landscape Statistics" begin
-        CHANCE_C.LocationUpdate(model;grouped = model.build_develop[:grouped])
+        CHANCE_C.LocationUpdate(model)
     end
     #run Housing Market to move HHAgents to desired locations
     @timeit tmr "Housing Market" CHANCE_C.HouseMarket(model; model.hh_market...) 
@@ -180,7 +182,7 @@ function evo_alt_step!(model::ABM)
         end
     end
     @timeit tmr "Landscape Statistics #2" begin
-        CHANCE_C.LocationUpdate(model;grouped = model.build_develop[:grouped])
+        CHANCE_C.LocationUpdate(model)
         model.total_population = sum([a.population for a in allagents(model) if a isa BlockGroup])
     end
     
@@ -190,7 +192,7 @@ end
 ### Simple measure of model performance ###
 mod_evo = evo_alt_step!
 ### Initialize ABM
-time_abm = CHANCE_C.Simulator(phil_bg, phil_cbsa_base_pop, f_df, mod_evo; start_year = start_year, no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
+time_abm = Simulator(phil_bg, phil_cbsa_base_pop, f_df, mod_evo; start_year = start_year, no_of_years = no_of_years, no_hhs_per_agent = no_hhs_per_agent,
 standardization = standardization, house_budget_mode = house_budget_mode, rhea_coef = rhea_coef, house_choice_mode = house_choice_mode, grouped = grouped, group_col = group_col, cutoff_dict = cutoff_dict, bg_cat = bg_cat,
 simple_anova_coefficients = util_coef, flood_coefficient = flood_coefficient, penalty = penalty, pop_growth_perc = growth_rate, stock_increase_perc = build_inc_perc, price_increase_perc = price_inc_perc,
 risk_averse = risk_averse, flood_mem = flood_mem, perc_move = base_move, levee=levee, fixed_effect = f_e, stay_prob = stay_prob, seed = seed)

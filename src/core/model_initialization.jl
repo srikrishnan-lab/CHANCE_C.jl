@@ -109,7 +109,7 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
                 util = copy(bg.current_utility)
             end
             add_agent!(bg.pos, HHAgent, model, bg.id, row.nrow, row.cat, row.cat, row.race, Int(round(row.avg_hh_size)), Float64(row.avg_income), Dict(bg.id => util),
-             house_budget_mode, model.tick, rand(abmrng(model),thresh_dist), zeros(no_of_years), 0, agent_avoid, row.budget, hh_budget_perc)
+             house_budget_mode, model.tick, simple_avoidance_perc, zeros(no_of_years), 0, agent_avoid, row.budget, hh_budget_perc)
         end
         #Calculate BG statistics based on agent properties within each BG
         #Future: Set income/size to NaN if avg == 0 (no agents in block group) 

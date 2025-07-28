@@ -9,7 +9,7 @@ function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 
 
     #subset flood matrix using flood record and sum the total flood area from events experienced
     flood_events = [model.flood_matrix.hazard[agent.id, rp, breach] for (breach,rp) in flood_mem]
-    flood_norm_events = [model.flood_matrix.hazard[agent.id, rp, breach] for (breach,rp) in flood_mem]
+    flood_norm_events = [model.flood_matrix.norm[agent.id, rp, breach] for (breach,rp) in flood_mem]
     agent.flood_hazard = sum(flood_events)/mem #Calculate avg. flood per year in flood mem window
 
     ##Utility Updating

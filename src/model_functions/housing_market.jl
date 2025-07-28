@@ -93,3 +93,114 @@ function HousingMarket(model::ABM; market_mode = "top_candidate", bg_sample_size
         end
     end
 end
+
+
+##Create new HousingMarket mechanism
+function HouseMarket(model::ABM; market_mode = "top_candidate", bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
+    budget_reduction_perc = 0.10, stay_prob = 1.0, grouped=true)
+    ## Collect characteristics of all locations. Sort by utility value
+    loc_df = sort!(copy(model.df), :curr_utility, rev=true)
+    loc_df[!,:demand] = zeros(nrow(loc_df))
+    # Create a GEOID-to-BlockGroup lookup
+    geoid_to_bg = Dict{Int64, Int64}()
+    for bg in allagents(model)
+        if bg isa BlockGroup
+            geoid_to_bg[bg.GEOID] = bg.id
+        end
+    end
+    ##For each moving agent:
+    moving_agents = sort!([a for a in ids_in_position(model[0], model) if model[a] isa HHAgent], by=a -> model[a].income, rev=true)
+    for ma in moving_agents
+        #Subset to affordable and desirable locations
+        bg_budget = if house_choice_mode == "simple_avoidance_utility"
+                        hh_agent.avoidance ? 
+                            subset(loc_df, :perc_fld_area => n -> n .<= 0.10, view = true) :
+                            subset(loc_df, :market_value => n -> n .<= hh_agent.house_budget, skipmissing=true, view = true)
+                    elseif house_choice_mode == "budget_reduction"
+                        new_house_budget = hh_agent.house_budget * (1 - budget_reduction_perc)
+                        hh_budget = ifelse.(loc_df.perc_fld_area .>= 0.10, new_house_budget, hh_agent.house_budget)
+                        subset(loc_df, :market_value => n -> n .<= hh_budget, skipmissing=true, view = true)
+                    else
+                        subset(loc_df, :market_value => n -> n .<= model[ma].house_budget,
+                         [:curr_utility, :income_cat] => ((c,i) -> getindex.(c, model[ma].group) .>= first(values(model[ma].utility))),
+                          skipmissing=true, view = true)
+                    end
+        #find first location with vacancy
+        loc_ind = findfirst(x -> x > 0, bg_budget.available_units)
+        #If there are no location options, agent moves back or outmigrates
+        if isnothing(loc_ind)
+            last_bg = model[first(keys(model[ma].utility))]
+            if grouped
+                if last_bg.id == -1 || last_bg.available_units[model[ma].occ_cat] <= 0
+                    remove_agent!(model[ma], model)
+                    continue
+                end
+                    
+                if rand(abmrng(model), Binomial(1, stay_prob)) == 1
+                    #Revert HHAgent Properties
+                    setproperty!(model[ma], :bg_id, last_bg.id)
+                    move_agent!(model[ma], last_bg.pos, model)
+                    #Update Last BG Properties
+                    last_bg.occupied_units[model[ma].occ_cat] += 1
+                    last_bg.available_units[model[ma].occ_cat] -= 1
+                    last_bg.population += getproperty(model[ma], :no_hhs_per_agent) * getproperty(model[ma], :hh_size)
+                    continue
+                else
+                    remove_agent!(model[ma], model)
+                    continue
+                end
+            else
+                if last_bg.id == -1 || last_bg.available_units <= 0
+                    remove_agent!(model[ma], model)
+                    continue
+                end
+                    
+                if rand(abmrng(model), Binomial(1, stay_prob)) == 1
+                    #Revert HHAgent Properties
+                    setproperty!(model[ma], :bg_id, last_bg.id)
+                    move_agent!(model[ma], last_bg.pos, model)
+                    #Update Last BG Properties
+                    last_bg.occupied_units += 1
+                    last_bg.available_units -= 1
+                    last_bg.population += getproperty(model[ma], :no_hhs_per_agent) * getproperty(model[ma], :hh_size)
+                    continue
+                else
+                    remove_agent!(model[ma], model)
+                    continue
+                end
+            end
+        end
+        #Get characteristics of block group
+        last_bg_id = model[first(keys(model[ma].utility))].id
+        new_bg_id = geoid_to_bg[bg_budget[loc_ind,:GEOID]]
+        occ_cat = bg_budget[loc_ind,:income_cat]
+        new_util = bg_budget[loc_ind, :curr_utility][model[ma].group] 
+        
+        #Move agent to new location
+        move_agent!(model[ma], model[new_bg_id].pos, model)
+        #Update bg_id, utility,  year of residence of agent
+        setproperty!(model[ma], :bg_id, new_bg_id)
+        setproperty!(model[ma], :occ_cat, occ_cat)
+        setproperty!(model[ma], :utility, Dict(new_bg_id => new_util)) #Dict(bg_id => model[bg_id].current_utility[cat]))
+        setproperty!(model[ma], :year_of_residence, model.tick)
+        #update bg attributes
+        model[new_bg_id].occupied_units[occ_cat] += 1
+        model[new_bg_id].available_units[occ_cat] -= 1              
+        model[new_bg_id].population += getproperty(model[ma],:no_hhs_per_agent) * getproperty(model[ma],:hh_size)
+        #If moving agent is in-migrating, record in migrating agent dict
+        if last_bg_id == -1
+            model[new_bg_id].new_agents[model[ma].group] += 1
+        end
+
+
+        bg_budget[loc_ind, :available_units] -= 1
+        #increase the interest count for all selections
+        bg_budget[!, :demand] .+= 1
+    end
+    
+    #Update demand attributes for all BlockGroups 
+    for row in eachrow(loc_df)
+        model[geoid_to_bg[row.GEOID]].demand_exceeds_supply[row.income_cat][model.tick] = row.demand - row.available_units
+    end
+
+end

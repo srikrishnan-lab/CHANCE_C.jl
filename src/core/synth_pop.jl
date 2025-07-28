@@ -45,7 +45,7 @@ function create_bg_balt(row, no_of_years)
     return new_bg
 end
 
-function create_bg_phil(row, no_of_years; agent_id = 1, categories = [1,2,3], house_choice_mode = "flood_mem_utility", 
+function create_bg_phil(row, no_of_years; agent_id = 1, groups = [1,2,3], categories = [1,2,3], house_choice_mode = "flood_mem_utility", penalty = 0.0, 
     simple_anova_coefficients = Dict(1=> [-121428, 294707, 130553, 128990, 154887, 72443], 2=> [-121428, 294707, 130553, 128990, 154887, 72443], 3=> [-121428, 294707, 130553, 128990, 154887, 72443]))
     """
     Function creates BlockGroup Agent Object
@@ -65,27 +65,30 @@ function create_bg_phil(row, no_of_years; agent_id = 1, categories = [1,2,3], ho
         demand_exceeds_supply = Dict(i => zeros(no_of_years) for i in categories)
 
         #Calculate agent utility for living in Block Group
-        base_utility = Dict(categories .=> 0.0)
-        for cat in categories
-            utility = calc_utility(row[row.income_cat .== cat,:][1,:], house_choice_mode; anova_coef = simple_anova_coefficients[cat])
-            base_utility[cat] = ismissing(utility) ? -90000.0 : utility
+        base_utility = zeros(length(groups), length(categories))
+        for group in groups
+            for cat in categories
+                utility = calc_utility(row[row.income_cat .== cat,:][1,:], house_choice_mode; anova_coef = simple_anova_coefficients[group])
+                util = ismissing(utility) ? -90000.0 : utility
+                base_utility[group, cat] = util - ((group - cat) * penalty)
+            end
         end
          
 
         new_bg = BlockGroup(agent_id,(0,0),row.GEOID[1], row.ALAND[1], 
-    0, row.perc_flpn_area[1], 0, 0, 0.0, 0.0, 0, 0.0, copy(base_utility), copy(base_utility), new_price, 0, occupied_units, available_units, 
+    0, row.perc_flpn_area[1], 0, 0, 0.0, 0.0, 0, Dict(groups .=> 0), 0.0, copy(base_utility), copy(base_utility), new_price, 0, occupied_units, available_units, 
     0.0, demand_exceeds_supply, new_units_constructed, 0.0, 0.0, 0.0)
     
     elseif typeof(row) == DataFrameRow{DataFrame, DataFrames.Index}
-        new_price = row.new_price
+        new_price = row.market_value[1]
         occupied_units = 0
         available_units = 0
         new_units_constructed = 0
         demand_exceeds_supply = repeat([false], no_of_years)
 
         new_bg = BlockGroup(agent_id, (0,0), row.GEOID, row.ALAND, 
-    0, 0, 0, 0, 0.0, 0.0, 0, 0.0, row.new_price, 0, occupied_units, available_units, 
-    0.0, demand_exceeds_supply, new_units_constructed, 0.0, 0.0, 0.0)
+                0, row.perc_flpn_area, 0, 0, 0.0, 0.0, 0, 0.0, copy(utility), copy(utility), new_price, 0, occupied_units, available_units, 
+                0.0, demand_exceeds_supply, new_units_constructed, 0.0, 0.0, 0.0)
     end
 
     return new_bg

@@ -34,9 +34,10 @@ end
     cbddist::Float64  
 
     population::Int64
+    new_agents::Union{Int64, Dict{Int64, Int64}}
     flood_hazard::Float64
-    base_utility::Union{Float64, Dict{Int64, Float64}}
-    current_utility::Union{Float64, Dict{Int64, Float64}}
+    base_utility::Union{Float64, Matrix{Float64}}
+    current_utility::Union{Float64, Matrix{Float64}}
     new_price::Union{Float64, Dict{Int64, Float64}}
     years_since_major_flooding::Int64
     occupied_units::Union{Int64, Dict{Int64, Int64}}

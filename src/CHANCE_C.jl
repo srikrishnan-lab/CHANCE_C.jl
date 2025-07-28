@@ -5,6 +5,7 @@ using CSV, Tables
 using DataFrames
 using DataStructures
 using CategoricalArrays
+using ComponentArrays
 using Statistics,StatsBase,Distributions
 using Random
 using Extremes
@@ -18,6 +19,7 @@ export
     agent_step!,
     block_step!,
     model_step!,
+    evolve!,
     step!,
     run!,
     ensemblerun!,
@@ -32,9 +34,11 @@ export
     agent_prob!,
     AgentLocation,
     HousingMarket,
+    HouseMarket,
     BuildingDevelopment,
     HousingPricing,
-    LandscapeStatistics
+    LandscapeStatistics,
+    LocationUpdate
 
 #import Agent Types and Flood Dynamics Functions
 include("core/agent_structs.jl")

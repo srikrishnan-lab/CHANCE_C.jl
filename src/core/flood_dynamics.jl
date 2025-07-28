@@ -142,22 +142,25 @@ end
 ## Input should be formatted as Dataframe with Rows representing BlockGroups and Columns representing Years 
     #(With first column being the BG GEOID column). 
 
-function flood_history(base_df; no_of_years = 10, start_year = 1981, slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], standardization = "min-max")
+function flood_history(base_df; no_of_years = 10, start_year = 1981, slr_scen = "high", slr_rate = [3.03e-3,7.878e-3,2.3e-2], standardization = "normal")
     #Sort df on GEOID
     sort!(base_df, :GEOID)
     #Select years of interest. Subset df
     flood_df = select(base_df,Symbol.(collect(range(start_year, start_year+(no_of_years-1), step = 1))))
     #Convert df to matrix
     flood_mat = zeros(size(flood_df)[1], size(flood_df)[2], 1)
+    flood_mat_norm = copy(flood_mat) #For normalized hazard values
     flood_mat[:,:,1] = Matrix(flood_df)
     #Normalize flood extents
     if standardization == "normal"
         if std(flood_mat[:,:,1]) != 0
-            flood_mat[:,:,1] = (flood_mat[:,:,1] .- mean(flood_mat[:,:,1])) ./ std(flood_mat[:,:,1])
+            flood_mat_norm[:,:,1] = (flood_mat[:,:,1] .- mean(flood_mat[:,:,1])) ./ std(flood_mat[:,:,1])
         end
     elseif standardization == "min-max"
-        flood_mat[:,:,1] = (flood_mat[:,:,1] .- minimum(flood_mat[:,:,1])) ./ (maximum(flood_mat[:,:,1]) .- minimum(flood_mat[:,:,1]))
+        flood_mat_norm[:,:,1] = (flood_mat[:,:,1] .- minimum(flood_mat[:,:,1])) ./ (maximum(flood_mat[:,:,1]) .- minimum(flood_mat[:,:,1]))
     end
+    #Create component array
+    flood_array = ComponentArray(hazard=flood_mat, norm = flood_mat_norm)
 
     scen_record = Int.(ones(no_of_years))
     #create dictionary of flood scenario and model year for each model year
@@ -165,7 +168,7 @@ function flood_history(base_df; no_of_years = 10, start_year = 1981, slr_scen = 
     #  as the initialize_flood function)
     rec_dict = Dict(collect(1:no_of_years) .=> zip(scen_record, collect(1:no_of_years)))
 
-    return flood_mat, rec_dict
+    return flood_array, rec_dict
 end
 
 

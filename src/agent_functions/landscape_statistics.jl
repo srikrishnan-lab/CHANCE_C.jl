@@ -25,6 +25,54 @@ function LandscapeStatistics(model::ABM; bg_cat = Dict(:col =>"income_cat", :gro
     model.df[!,"average_income_norm"] = model.df[!, "average_income"] / maximum(filter(!isnan,model.df.average_income));
 end
 
+
+
+
+function LocationUpdate(model::ABM; bg_cat = Dict(:col =>"income_cat", :occ_cat => [1,2,3]), grouped = true)
+    # Create mapping from (GEOID, category) to row indices for fast lookup
+    if grouped
+        row_lookup = Dict{Tuple{Int64, Int64}, Int64}()
+        for (i, row) in enumerate(eachrow(model.df))
+            row_lookup[(row.GEOID, row[bg_cat[:col]])] = i
+        end
+
+        #Update model df from Block Group updates
+        bgs = [a for a in allids(model) if model[a] isa BlockGroup]
+        for bg in bgs 
+            for cat in bg_cat[:occ_cat]
+                if haskey(row_lookup, (model[bg].GEOID, cat))
+                    row_idx = row_lookup[(model[bg].GEOID, cat)]
+                    model.df[row_idx, :occupied_units] = model[bg].occupied_units[cat]
+                    model.df[row_idx, :available_units] = model[bg].available_units[cat]
+                    model.df[row_idx, :average_income] = model[bg].avg_hh_income
+                    model.df[row_idx, :market_value] = model[bg].new_price[cat]
+                end
+            end
+        end
+    else
+        # For ungrouped case
+        row_lookup = Dict{Int64, Int64}()
+        for (i, row) in enumerate(eachrow(model.df))
+            row_lookup[row.GEOID] = i
+        end
+        bgs = [a for a in allids(model) if model[a] isa BlockGroup]
+        for bg in bgs 
+            if haskey(row_lookup, model[bg].GEOID)
+                row_idx = row_lookup[model[bg].GEOID]
+                model.df[row_idx, :occupied_units] = model[bg].occupied_units
+                model.df[row_idx, :available_units] = model[bg].available_units
+                model.df[row_idx, :average_income] = model[bg].avg_hh_income
+                model.df[row_idx, :market_value] = model[bg].new_price
+            end
+        end
+    end
+
+    # Calculate normalized income
+    valid_incomes = filter(!isnan, model.df.average_income)
+    if !isempty(valid_incomes)
+        model.df[!, :average_income_norm] = model.df.average_income ./ maximum(valid_incomes)
+    end
+end
 """
 ### For Data Collection ###
 #Calculate BG statistics based on agent properties within each BG

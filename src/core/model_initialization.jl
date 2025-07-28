@@ -1,7 +1,7 @@
 
 
 mutable struct Properties{df<:Union{DataFrame, GroupedDataFrame{DataFrame}}, t_p<:Int64, f_h<:Dict, a_c<:Dict, r_s<:Dict, a_r<:Dict, b_d<:Dict,
-     h_m<:Dict, h_p<:Dict, u_hhs<:DataFrame, no_y<:Int64, f_mat<:Array, f_dict<:Dict, tick<:Int64}
+     h_m<:Dict, h_p<:Dict, u_hhs<:DataFrame, no_y<:Int64, f_mat<:ComponentVector, f_dict<:Dict, tick<:Int64}
     df::df
     total_population::t_p
     flood_hazard::f_h
@@ -22,11 +22,11 @@ end
 
 function Simulator(bg_df, pop_df, f_df, model_evolve; 
     start_year = 1981, no_of_years = 10, no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33, rhea_coef = 0.63, grouped = false, group_col = "adj_income_2019",
-    cutoff_dict = OrderedDict(1=> [0,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7]), bg_cat = Dict(:col =>"income_cat", :group => [1,2,3]), pop_growth_perc = .01, 
+    cutoff_dict = OrderedDict(1=> [0,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7]), bg_cat = Dict(:col =>"income_cat", :occ_cat => [1,2,3]), pop_growth_perc = .01, 
     dist_param = [0.3, 0.4, 0.3], perc_move = 0.025, house_choice_mode = "simple_avoidance_utility", flood_coefficient = 500000, budget_reduction_perc = .90,
     simple_anova_coefficients = Dict(1=> [-121428, 294707, 130553, 128990, 154887, 72443], 2=> [-121428, 294707, 130553, 128990, 154887, 72443], 3=> [-121428, 294707, 130553, 128990, 154887, 72443]), 
     penalty = 50, stock_increase_mode = "simple_perc",  stock_increase_perc = .05,  housing_pricing_mode = "simple_perc", price_increase_perc = .05,
-     standardization = "min-max", bg_sample_size = 10, stay_prob = 1.0, levee = false, risk_averse = 0.3, flood_mem = 10, fixed_effect = 0, seed = 1500,
+     standardization = "normal", bg_sample_size = 10, stay_prob = 1.0, levee = false, risk_averse = 0.3, flood_mem = 10, fixed_effect = 0, seed = 1500,
 )
     ##Calculate Flood matrix and Dict for ABM input
     #Ensure that only BGs present in bg_df are selected in f_df
@@ -35,14 +35,13 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
     
     ##Create Keyword Arguments for step function parameters
     #Flood Hazard & Flood Disamenity Updating
-    flood_hazard = Dict(:mem => flood_mem, :levee => levee, :f_e => fixed_effect, :flood_coef => flood_coefficient, :penalty => penalty)
+    flood_hazard = Dict(:mem => flood_mem, :levee => levee, :f_e => fixed_effect, :flood_coef => flood_coefficient)
     #AgentCreation
     agent_creation = Dict(:growth_rate => pop_growth_perc)
 
     #Agent relocation
     averse_move = Dict(:levee => levee, :risk_averse => risk_averse, :base_prob => perc_move, :f_e => fixed_effect)
-    agent_relocate = Dict(:levee => levee, :f_e => fixed_effect, :house_choice_mode => house_choice_mode, :bg_sample_size => no_hhs_per_agent, :budget_reduction_perc => budget_reduction_perc,
-    :penalty => penalty)
+    agent_relocate = Dict(:levee => levee, :f_e => fixed_effect, :house_choice_mode => house_choice_mode, :bg_sample_size => no_hhs_per_agent, :budget_reduction_perc => budget_reduction_perc)
 
     #BuildingDevelopment
     build_develop = Dict(:stock_increase_mode => stock_increase_mode, :stock_increase_perc => stock_increase_perc)
@@ -80,18 +79,19 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
     #Create block group agents (network nodes)
     if grouped
         for (id,group) in enumerate(grouped_df)
-            add_agent_single!(create_bg_phil(group, no_of_years; agent_id = id, categories = bg_cat[:group], house_choice_mode = house_choice_mode, 
-            simple_anova_coefficients = simple_anova_coefficients), model)
+            add_agent_single!(create_bg_phil(group, no_of_years; agent_id = id, groups = collect(keys(cutoff_dict)), categories = bg_cat[:occ_cat],
+            house_choice_mode = house_choice_mode, penalty = penalty, simple_anova_coefficients = simple_anova_coefficients), model)
         end
     else
-        for row in Tables.namedtupleiterator(model.df)
-            add_agent_single!(create_bg_phil(row, no_of_years), model)
+        for (id, row) in enumerate(eachrow(bg_df))
+            add_agent_single!(create_bg_phil(row, no_of_years; agent_id = id, house_choice_mode = house_choice_mode, 
+            simple_anova_coefficients = simple_anova_coefficients), model)
         end
     end
     
     #Create Household agents and add to block groups
     housing_df = DataFrame(name = Int64[], agent_id = Int64[], no_hh_agents  = Any[], population = Int64[], average_income = Float64[], avg_hh_size = Float64[], 
-    pop_density = Float64[], group = Int64[], occupied_units = Int64[], available_units = Int64[], demand_exceeds_supply = Bool[])
+    pop_density = Float64[], group = Int64[], occupied_units = Int64[], available_units = Int64[], curr_utility = Union{Float64,Vector{Float64}}[], demand_exceeds_supply = Float64[])
 
     for bg in collect(allagents(model))
         dict, agent_df = agent_bin_cont(bg.GEOID, pop_df; no_hhs_per_agent=no_hhs_per_agent, group_col = group_col, cutoffs = cutoff_dict,
@@ -103,8 +103,13 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
             agent_avoid = rand(abmrng(model),Uniform(0,1)) <= simple_avoidance_perc ? true : false
 
             #Add agent to model
-            add_agent!(bg.pos, HHAgent, model, bg.id, row.nrow, row.cat, row.cat, row.race, Int(round(row.avg_hh_size)), Float64(row.avg_income), Dict(bg.id => bg.current_utility[row.cat]),
-             house_budget_mode, model.tick, simple_avoidance_perc, zeros(no_of_years), 0, agent_avoid, row.budget, hh_budget_perc)
+            if grouped
+                util = copy(bg.current_utility[row.cat,row.cat])
+            else
+                util = copy(bg.current_utility)
+            end
+            add_agent!(bg.pos, HHAgent, model, bg.id, row.nrow, row.cat, row.cat, row.race, Int(round(row.avg_hh_size)), Float64(row.avg_income), Dict(bg.id => util),
+             house_budget_mode, model.tick, rand(abmrng(model),thresh_dist), zeros(no_of_years), 0, agent_avoid, row.budget, hh_budget_perc)
         end
         #Calculate BG statistics based on agent properties within each BG
         #Future: Set income/size to NaN if avg == 0 (no agents in block group) 
@@ -130,8 +135,9 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
         end
         
         ## add to dataframe 
-        for group in bg_cat[:group]
-            push!(housing_df, [bg.GEOID, bg.id, no_of_hhs, bg.population, bg.avg_hh_income, bg.avg_hh_size, bg.pop_density, group, bg.occupied_units[group], bg.available_units[group], bg.demand_exceeds_supply[group][1]])
+        for occ_cat in bg_cat[:occ_cat]
+            push!(housing_df, [bg.GEOID, bg.id, no_of_hhs, bg.population, bg.avg_hh_income, bg.avg_hh_size, bg.pop_density, occ_cat,
+                bg.occupied_units[occ_cat], bg.available_units[occ_cat], bg.current_utility[:,occ_cat], bg.demand_exceeds_supply[occ_cat][1]])
         end
     end
     

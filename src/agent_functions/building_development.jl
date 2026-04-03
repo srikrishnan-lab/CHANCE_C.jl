@@ -29,6 +29,9 @@ existing units are skipped.
   - 'agent.new_units_constructed' with the number of units built in the current step.
 - New construction is proportional to both demand pressure and existing occupancy.
 - The result is rounded to the nearest integer before being applied.
+
+# Returns
+ 'Nothing'
 """
 function BuildingDevelopment(agent::BlockGroup, model::ABM; stock_increase_mode = "simple_perc", stock_increase_perc = 0.05)
     for key in keys(agent.demand_exceeds_supply)

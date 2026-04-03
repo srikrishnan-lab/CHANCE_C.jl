@@ -4,6 +4,7 @@
 Randomly selects a percentage of household agents (`HHAgent`) from a given BlockGroup 
 and moves them into the relocation queue.
 
+- Identifies all household agents currently in the BlockGroup
 - Samples a fraction ('perc_move') of those agents without replacement
 - Updates their 'bg_id' to 0 (indicating relocation)
 - Moves them to the model's relocation queue (position 0)
@@ -241,6 +242,7 @@ function AgentLocation(agent::Queue, model::ABM; bg_sample_size = 10, house_choi
                 if hh_agent.avoidance
                     bg_budget = subset(model.df, :perc_fld_area => n -> n .<= 0.10)#, :new_price => n -> n .<= hh_agent.house_budget) #does new_price <= house_budget?
                 else
+                    bg_budget = subset(model.df, :new_price => n -> n .<= hh_agent.house_budget)
                 end
             elseif house_choice_mode == "budget_reduction"
                 #Calculate new budget for flooded areas

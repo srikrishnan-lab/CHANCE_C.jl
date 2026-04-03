@@ -1,3 +1,31 @@
+"""
+    flooded!(agent::BlockGroup, model::ABM; mem=10, levee=false, f_e=0.0, flood_coef=500000, penalty=50)
+
+Updates flood exposure, flood memory, and utility for a block group and its households.
+
+This function computes the average flood hazard experienced by a BlockGroup over a rolling
+memory window ('mem' years) using past flood records. It then adjusts the BlockGroup's
+utility based on normalized flood exposure, reducing utility as flood risk increases.
+If a levee is present, the perceived flood impact is reduced using a scaling factor.
+
+The updated utility is written back to both the BlockGroup and the model dataframe.
+Additionally, all household agents within the BlockGroup update their individual flood
+memory (experienced hazard over time) and inherit the updated utility.
+
+# Arguments
+- 'agent::BlockGroup': The block group agent whose flood exposure and utility are updated.
+- 'model::ABM': The agent-based model containing flood data, agents, and current time ('tick').
+
+# Parameters
+- 'mem': Number of past years used to compute flood memory.
+- 'levee': Whether a levee is present, reducing perceived flood impact.
+- 'f_e': Effectiveness of the levee in reducing flood disamenity.
+- 'flood_coef': Scaling factor converting normalized flood exposure into utility loss.
+- 'penalty': Unused parameter reserved for future extensions.
+
+# Returns
+- Nothing. Mutates the BlockGroup, household agents, and model dataframe in place.
+"""
 ## Update Flooded Houses
 function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 0.0, flood_coef = 500000, penalty = 50)
     

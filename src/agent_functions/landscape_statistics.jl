@@ -6,7 +6,22 @@ Updating avg_hh_income should be in a bg specific function
 #BG agent attributes needing updating 
 #agent.population
 
+"""
+For each BlockGroup agent and specified category, this function:
+- Gathers key attributes (occupied units, available units, average household income, and market value).
+- Builds a temporary DataFrame with updated values.
+- Merges ('leftjoin') the updates into 'model.df' using GEOID and category.
+- Overwrites existing columns in 'model.df' with the updated values.
+- Computes a normalized average income column ('average_income_norm') by dividing by the maximum non-NaN income.
 
+# Arguments
+-'model::ABM': The agent-based model containing BlockGroup agents and a DataFrame ('model.df') to update.
+
+# Parameters
+- 'bg_cat::Dict': Dictionary specifying:
+    - ':col' → Column name in 'model.df' representing category (default '"income_cat"').
+    - ':group' → Vector of category values to iterate over (default '[1,2,3]').
+"""
 function LandscapeStatistics(model::ABM; bg_cat = Dict(:col =>"income_cat", :group => [1,2,3]))
     # model BG df attributes needing updating:
     update_df = DataFrame(id = Int64[], cat = Int64[], occupied_units = Int64[], available_units = Int64[], average_income = Float64[], market_value = Float64[])
@@ -26,8 +41,32 @@ function LandscapeStatistics(model::ABM; bg_cat = Dict(:col =>"income_cat", :gro
 end
 
 
+"""
+Efficiently updates 'model.df' with the latest BlockGroup agent attributes using direct indexing.
 
+This function avoids DataFrame joins by:
+- Building a lookup dictionary that maps '(GEOID, category)' (or just 'GEOID' if ungrouped) to row indices.
+- Iterating through BlockGroup agents and writing updated values directly into 'model.df'.
 
+For each relevant BlockGroup, it updates:
+- 'occupied_units'
+- 'available_units'
+- 'average_income'
+- 'market_value'
+
+It also computes a normalized income column (`average_income_norm`) using the maximum non-NaN income.
+
+# Arguments
+- 'model::ABM': The agent-based model containing BlockGroup agents and the DataFrame ('model.df') to update.
+
+# Keyword Arguments
+- 'bg_cat::Dict': Dictionary specifying:
+    - ':col' → Column name in 'model.df' representing category (default "income_cat").
+    - ':occ_cat' → Vector of category values to update (default '[1,2,3]').
+- `grouped::Bool': 
+    - 'true' → Updates are performed per '(GEOID, category)' pair.
+    - 'false' → Updates are performed per 'GEOID' only (no category distinction).
+"""
 function LocationUpdate(model::ABM; bg_cat = Dict(:col =>"income_cat", :occ_cat => [1,2,3]), grouped = true)
     # Create mapping from (GEOID, category) to row indices for fast lookup
     if grouped

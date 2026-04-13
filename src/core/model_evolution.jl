@@ -1,5 +1,19 @@
 """
 Defines model step function by combining individual agent and model evolution functions
+Includes:
+- agent_step! methods for HHAgent, BlockGroup, and Queue dynamics
+- block_step! for housing pricing and development processes
+- model_step! and evolve! for full timestep progression
+
+Each timestep:
+1. Advances model time and initializes state (e.g., clearing utilities)
+2. Generates new agents through migration
+3. Executes agent decisions (relocation, flooding response, queue updates)
+4. Runs the housing market to reassign households
+5. Updates BlockGroup conditions (pricing, development, income averages)
+6. Computes global statistics (e.g., population, landscape metrics)
+
+Supports alternative evolution pipelines via model_step! and evolve!.
 """
 #Import model/agent step functions
 #agent

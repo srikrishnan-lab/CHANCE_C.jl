@@ -1,3 +1,46 @@
+"""
+Flood simulation and initialization module.
+
+This module provides functions to model flood hazard scenarios, including levee breach
+probabilities, stochastic flood event generation, and mapping simulated flood levels
+to spatial inundation data.
+
+Functions:
+
+- levee_breach(flood_height; n_null=0.45)
+    Computes the probability of levee failure based on flood height using a 
+    piecewise model.
+
+- breach_occur(f_depth; null=0.45, rng)
+    Simulates whether a levee breach occurs using the computed failure probability.
+
+- m_to_ft(a)
+    Converts a value from meters to feet.
+
+- find_closest(A, b; order)
+    Returns the index of the value in sorted array A closest to value b.
+
+- initialize_flood
+    Initializes flood scenarios by:
+        - Constructing spatial flood matrices from baseline and levee datasets
+        - Simulating flood events
+        - Incorporating sea level rise projections
+        - Optionally modeling levee breach events
+        - Mapping simulated flood levels to nearest available surge data
+
+    Returns:
+        flood_mat: 3D array of flood extents
+        rec_dict: Dictionary mapping year (scenario index, surge index)
+
+- flood_history
+    Initializes flood scenarios using historical flood data instead of simulated events.
+    Supports normalization (z-score or min-max).
+
+    Returns:
+        flood_array: ComponentArray with raw and normalized flood data
+        rec_dict: Dictionary mapping year (scenario index, year index)
+"""
+
 ### Integrate spatial flood inundation data from external hazard models, such as FastFlood
 
 include(joinpath(dirname(dirname(@__DIR__)),"data/GEV_functions.jl"))

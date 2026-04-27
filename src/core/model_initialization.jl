@@ -1,4 +1,35 @@
+"""
+Initialize and return an agent-based model (ABM) for simulating household
+dynamics, housing markets, and flood risk interactions over time.
 
+# Arguments
+- "bg_df": DataFrame of block group attributes.
+- "pop_df": DataFrame of population and household characteristics.
+- "f_df": DataFrame of flood history.
+- "model_evolve": Function defining model step evolution.
+
+# Parameters
+- "start_year::Int": Simulation start year.
+- "no_of_years::Int": Number of years to simulate.
+- "no_hhs_per_agent::Int": Households per agent.
+- "grouped::Bool": Whether to group block groups.
+- "cutoff_dict::OrderedDict": Income group thresholds.
+- "pop_growth_perc::Float64": Population growth rate.
+- "perc_move::Float64": Base relocation probability.
+- "house_choice_mode::String": Housing decision model.
+- "flood_coefficient::Float64": Flood disamenity scaling.
+- "stock_increase_perc::Float64": Housing stock growth rate.
+- "price_increase_perc::Float64": Housing price growth rate.
+- "seed::Int": Random seed.
+
+# Description
+Builds model properties, initializes flood dynamics, creates spatial structure,
+and populates the model with "BlockGroup", "HHAgent", and queue agents.
+Computes initial housing statistics and returns a ready-to-run ABM.
+
+# Returns
+- "model::ABM": Initialized agent-based model.
+"""
 
 mutable struct Properties{df<:Union{DataFrame, GroupedDataFrame{DataFrame}}, t_p<:Int64, f_h<:Dict, a_c<:Dict, r_s<:Dict, a_r<:Dict, b_d<:Dict,
      h_m<:Dict, h_p<:Dict, u_hhs<:DataFrame, no_y<:Int64, f_mat<:ComponentVector, f_dict<:Dict, tick<:Int64}

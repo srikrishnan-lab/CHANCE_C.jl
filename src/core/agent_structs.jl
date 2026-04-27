@@ -1,5 +1,18 @@
 using Agents
+"""
+    HHAgent <: GridAgent{2}
 
+Represents a household agent aggregating one or more households. Stores demographic,
+economic, and behavioral attributes used to model housing choice, utility evaluation,
+and relocation decisions in response to factors like price and flood risk.
+
+Includes:
+- Demographics (group, race, household size, income)
+- Housing state (block group, occupancy category, residence time)
+- Utility tracking across block groups
+- Risk perception and avoidance behavior
+- Housing budget parameters
+"""
 @agent struct HHAgent(GridAgent{2})
     #Attributes
     bg_id::Int64

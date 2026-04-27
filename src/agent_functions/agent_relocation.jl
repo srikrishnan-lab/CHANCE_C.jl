@@ -1,3 +1,30 @@
+"""
+    ExistingAgentResampler(agent::BlockGroup, model::ABM; perc_move=0.10)
+
+Randomly selects a percentage of household agents (`HHAgent`) from a given BlockGroup 
+and moves them into the relocation queue.
+
+- Identifies all household agents currently in the BlockGroup
+- Samples a fraction ('perc_move') of those agents without replacement
+- Updates their 'bg_id' to 0 (indicating relocation)
+- Moves them to the model's relocation queue (position 0)
+- Updates BlockGroup properties:
+    - Decreases 'occupied_units'
+    - Increases 'available_units'
+    - Reduces total 'population' based on household sizes
+
+If fewer than one agent qualifies to move, the function exits early.
+
+# Arguments
+- 'agent::BlockGroup': The BlockGroup from which agents are sampled
+- 'model::ABM': The agent-based model containing agents and spatial structure
+
+# Parameters
+- 'perc_move::Float64=0.10': Fraction of household agents to relocate
+
+# Returns
+- 'Nothing'
+"""
 function ExistingAgentResampler(agent::BlockGroup, model::ABM; perc_move = 0.10)
     bg_agents = [a for a in agents_in_position(agent, model) if a isa HHAgent]
     no_of_agents_moving = Int(round(perc_move * length(bg_agents))) #number of HHAgents moving from BlockGroup
@@ -16,6 +43,7 @@ function ExistingAgentResampler(agent::BlockGroup, model::ABM; perc_move = 0.10)
     
     agent.population -= sum(getproperty.(agents_moving,:no_hhs_per_agent) .* getproperty.(agents_moving,:hh_size))
 end
+<<<<<<< Updated upstream
 """
 function agent_prob!(agent::BlockGroup, model::ABM; category = [1,2,3], levee = false, risk_averse = 0.3, mem = 10, base_prob = 0.10, f_e = 0)
     #Function determines probability of agent action
@@ -101,6 +129,59 @@ function agent_prob!(agent::HHAgent, model::ABM; levee = false, risk_averse = 0.
 
         model[bg_id].population -= getproperty(agent,:no_hhs_per_agent) * getproperty(agent,:hh_size)
     end
+=======
+
+"""
+    calc_utility(row, house_choice_mode; cd_dict, anova_coef, flood_coef)
+
+Calculates the utility score of a potential housing option based on the specified 
+household decision model.
+
+Supports multiple utility formulations:
+- '"cobb_douglas_utility"': Multiplicative utility using normalized income, proximity to CBD, and flood risk
+- '"simple_flood_utility"': Linear ANOVA-style utility including a flood risk penalty
+- Other modes (e.g., '"simple_anova_utility"', '"budget_reduction"', '"simple_avoidance_utility"'):
+  Linear ANOVA-style utility without flood penalty
+
+# Arguments
+- 'row': A row from the housing DataFrame containing housing and environmental attributes
+- 'house_choice_mode::String': Determines which utility function is applied
+
+# Parameters
+- 'cd_dict::Dict': Exponents for Cobb-Douglas utility (default: Dict(:a=>0.4,:b=>0.4,:c=>0.2))
+- 'anova_coef::Vector': Coefficients for housing attributes in linear utility
+- 'flood_coef::Float64': Coefficient applied to flood exposure
+
+# Returns
+- 'Float64': Computed utility score
+"""
+function calc_utility(row, house_choice_mode; cd_dict = Dict(:a=>0.4,:b=>0.4,:c=>0.2), anova_coef = [-121428, 294707, 130553, 128990, 154887], flood_coef = -500000)
+    if house_choice_mode == "cobb_douglas_utility"
+        util = row.average_income_norm ^ cd_dict[:a] * row.prox_cbd_norm ^ cd_dict[:b] * row.flood_risk_norm ^ cd_dict[:c]
+
+    elseif house_choice_mode == "simple_flood_utility"
+        util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
+        (anova_coef[5] * row.N_MeanFullBathNumber) + (flood_coef * row.perc_fld_area) + (1 * row.residuals)
+
+    else #house_choice_mode == "simple_anova_utility" or house_choice_mode == "budget_reduction" or house_choice_mode == "simple_avoidance_utility"
+        util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
+        (anova_coef[5] * row.N_MeanFullBathNumber) + (1 * row.residuals)
+    end
+    return util 
+
+ if house_choice_mode == "cobb_douglas_utility"
+        util = row.average_income_norm ^ cd_dict[:a] * row.prox_cbd_norm ^ cd_dict[:b] * row.flood_risk_norm ^ cd_dict[:c]
+
+    elseif house_choice_mode == "simple_flood_utility"
+        util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
+        (anova_coef[5] * row.N_MeanFullBathNumber) + (flood_coef * row.perc_fld_area) + (1 * row.residuals)
+
+    else #house_choice_mode == "simple_anova_utility" or house_choice_mode == "budget_reduction" or house_choice_mode == "simple_avoidance_utility"
+        util = anova_coef[1] + (anova_coef[2] * row.N_MeanSqfeet) + (anova_coef[3] * row.N_MeanAge) + (anova_coef[4] * row.N_MeanNoOfStories) + 
+        (anova_coef[5] * row.N_MeanFullBathNumber) + (1 * row.residuals)
+    end
+    return util 
+>>>>>>> Stashed changes
 end
 
 """
@@ -109,6 +190,7 @@ functions NewAgentLocation and ExistingAgentLocation in the python version of CH
 function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
     budget_reduction_perc = 0.10, penalty = 50)
 
+<<<<<<< Updated upstream
     if agent.type == :relocating
         loc_df = copy(model.df)
         # Create a GEOID-to-BlockGroup lookup
@@ -116,6 +198,61 @@ function AgentLocation(agent::Queue, model::ABM; levee = false, f_e = 0.0, bg_sa
         for bg in allagents(model)
             if bg isa BlockGroup
                 geoid_to_bg[bg.GEOID] = bg.id
+=======
+"""
+    AgentLocation(agent::Queue, model::ABM; bg_sample_size=10, house_choice_mode="simple_anova_utility", ...)
+
+Generates and evaluates potential relocation options for household agents in the relocation queue.
+
+This function:
+- Iterates through all 'HHAgent's in the queue
+- Filters BlockGroups based on household budget and behavioral rules:
+    - Flood avoidance preferences
+    - Budget reduction in flood-prone areas
+- Samples a set of candidate BlockGroups (weighted by available units)
+- Computes utility scores for each option using 'calc_utility'
+- Stores results in a temporary DataFrame ('bg_sample')
+- Appends all results to 'model.hh_utilities_df'
+
+If a household cannot afford any BlockGroup, it is removed from the model (interpreted as outmigration).
+
+# Arguments
+- 'agent::Queue': The relocation queue containing agents seeking new locations
+- 'model::ABM': The agent-based model containing spatial and housing data
+
+# Keyword Arguments
+- 'bg_sample_size::Int=10': Number of BlockGroups sampled per household
+- 'house_choice_mode::String': Determines which utility model is used
+- 'budget_reduction_perc::Float64=0.10': Reduction in budget for flood-prone areas
+- 'a_c::Vector': Coefficients for ANOVA-style utility calculation
+- 'f_c::Float64': Flood coefficient for flood-aware utility
+
+# Returns
+- 'Nothing'
+"""
+function AgentLocation(agent::Queue, model::ABM; bg_sample_size = 10, house_choice_mode = "simple_anova_utility",
+    budget_reduction_perc = 0.10, a_c = [-121428, 294707, 130553, 128990, 154887], f_c = -500000)
+    #Create dataframe to store potential relocation bgs
+    bg_sample = DataFrame(hh_id = Int64[], bg_id = Int64[], bg_utility = Float64[])
+    for hh_agent in agents_in_position(agent, model)
+        if !isa(hh_agent, HHAgent)
+            continue
+        else
+            if house_choice_mode == "simple_avoidance_utility"
+                if hh_agent.avoidance
+                    bg_budget = subset(model.df, :perc_fld_area => n -> n .<= 0.10)#, :new_price => n -> n .<= hh_agent.house_budget) #does new_price <= house_budget?
+                else
+                    bg_budget = subset(model.df, :new_price => n -> n .<= hh_agent.house_budget)
+                end
+            elseif house_choice_mode == "budget_reduction"
+                #Calculate new budget for flooded areas
+                new_house_budget = hh_agent.house_budget * (1 - budget_reduction_perc)
+                #Create vector of household budgets conditional on BlockGroup flooded area 
+                hh_budget = ifelse.(model.df.perc_fld_area .>= 0.10, new_house_budget, hh_agent.house_budget)
+                bg_budget = subset(model.df, :new_price => n -> n .<= hh_budget)
+            else 
+                bg_budget = subset(model.df, :new_price => n -> n .<= hh_agent.house_budget)
+>>>>>>> Stashed changes
             end
         end
 

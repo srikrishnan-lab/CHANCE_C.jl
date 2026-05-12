@@ -35,6 +35,20 @@ Includes:
 end
 
 
+"""
+Represents a census block group within the simulation.
+
+Stores geographic, demographic, housing market, and flood-related
+attributes used to model neighborhood dynamics over time.
+
+Includes:
+- Geographic identifiers and spatial characteristics
+- Population and household statistics
+- Housing stock and occupancy information
+- Flood hazard exposure and flood memory
+- Housing utility and pricing data
+- Demand and development tracking variables
+"""
 @agent struct BlockGroup(GridAgent{2})
     #Attributes
     GEOID::Int64
@@ -64,7 +78,15 @@ end
 end
 
 
-#Create Agent Struct to store unassigned/relocating agents 
+"""
+Represents a queue agent used to temporarily store relocating
+or unassigned household agents within the housing market process.
+
+Queue agents are used to:
+- Hold households searching for housing
+- Manage relocation workflows
+- Store newly created but unassigned households
+"""
 @agent struct Queue(GridAgent{2})
     #Attributes
     type::Symbol

@@ -1,20 +1,3 @@
-"""
-Defines model step function by combining individual agent and model evolution functions
-Includes:
-- agent_step! methods for HHAgent, BlockGroup, and Queue dynamics
-- block_step! for housing pricing and development processes
-- model_step! and evolve! for full timestep progression
-
-Each timestep:
-1. Advances model time and initializes state (e.g., clearing utilities)
-2. Generates new agents through migration
-3. Executes agent decisions (relocation, flooding response, queue updates)
-4. Runs the housing market to reassign households
-5. Updates BlockGroup conditions (pricing, development, income averages)
-6. Computes global statistics (e.g., population, landscape metrics)
-
-Supports alternative evolution pipelines via model_step! and evolve!.
-"""
 #Import model/agent step functions
 #agent
 include(joinpath(dirname(@__DIR__), "agent_functions/agent_include.jl"))
@@ -22,26 +5,65 @@ include(joinpath(dirname(@__DIR__), "agent_functions/agent_include.jl"))
 include(joinpath(dirname(@__DIR__), "model_functions/model_include.jl"))
 
 #Define agent steps
+
+"""
+Executes a timestep update for a household agent.
+
+Determines whether the household relocates based on
+flood experience, risk perception, and relocation behavior.
+"""
 function agent_step!(agent::HHAgent, model::ABM)
     agent_prob!(agent, model; model.relo_sampler...) 
 end
  
+"""
+Executes a timestep update for a BlockGroup agent.
+
+Resets migration counters and updates flood exposure,
+flood memory, and utility values.
+"""
 function agent_step!(agent::BlockGroup, model::ABM)
     #clear migrating agents Dict
     map!(x->0, values(agent.new_agents))
     flooded!(agent, model; model.flood_hazard...)
 end
  
+"""
+Processes relocating or unassigned household agents stored in a queue.
+
+Evaluates candidate block groups and assigns households
+to new housing locations.
+"""
 function agent_step!(agent::Queue, model::ABM)
     AgentLocation(agent, model; model.agent_relocate...)
 end
  
+"""
+Updates housing market conditions within a BlockGroup.
+
+Adjusts housing prices and simulates new housing development
+based on local demand and supply dynamics.
+"""
 function block_step!(agent::BlockGroup, model::ABM)
     HousingPricing(agent, model; model.house_price...)
     BuildingDevelopment(agent, model; model.build_develop...)
 end
  
 #Define model evolution
+
+"""
+Advances the agent-based model by one timestep.
+
+Per timestep, the model:
+1. Advances simulation time
+2. Generates new household agents
+3. Executes household relocation and flood-response behavior
+4. Runs the housing market
+5. Updates housing prices and development
+6. Computes landscape and population statistics
+
+Used as the primary evolution pipeline for the simulation.
+"""
 function model_step!(model::ABM)
     #Update Year
     model.tick += 1
@@ -79,6 +101,20 @@ end
 
 
 #Define alternate model evolution
+"""
+Alternative model evolution pipeline with explicit location updates.
+
+Per timestep, the model:
+1. Advances simulation time
+2. Generates new household agents
+3. Executes household and flood dynamics
+4. Updates spatial locations
+5. Runs the housing market
+6. Recomputes BlockGroup conditions and population totals
+
+Differs from 'model_step!' by incorporating intermediate
+'LocationUpdate' calls during evolution.
+"""
 function evolve!(model::ABM)
     #Update Year
     model.tick += 1

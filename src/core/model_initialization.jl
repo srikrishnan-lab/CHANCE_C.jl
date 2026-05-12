@@ -1,36 +1,19 @@
 """
-Initialize and return an agent-based model (ABM) for simulating household
-dynamics, housing markets, and flood risk interactions over time.
+    Properties
 
-# Arguments
-- "bg_df": DataFrame of block group attributes.
-- "pop_df": DataFrame of population and household characteristics.
-- "f_df": DataFrame of flood history.
-- "model_evolve": Function defining model step evolution.
+Container for global model properties and simulation state.
 
-# Parameters
-- "start_year::Int": Simulation start year.
-- "no_of_years::Int": Number of years to simulate.
-- "no_hhs_per_agent::Int": Households per agent.
-- "grouped::Bool": Whether to group block groups.
-- "cutoff_dict::OrderedDict": Income group thresholds.
-- "pop_growth_perc::Float64": Population growth rate.
-- "perc_move::Float64": Base relocation probability.
-- "house_choice_mode::String": Housing decision model.
-- "flood_coefficient::Float64": Flood disamenity scaling.
-- "stock_increase_perc::Float64": Housing stock growth rate.
-- "price_increase_perc::Float64": Housing price growth rate.
-- "seed::Int": Random seed.
+Stores:
+- spatial and demographic datasets
+- flood hazard parameters and flood-history records
+- relocation and migration settings
+- housing market and pricing parameters
+- utility tracking data
+- timestep and simulation metadata
 
-# Description
-Builds model properties, initializes flood dynamics, creates spatial structure,
-and populates the model with "BlockGroup", "HHAgent", and queue agents.
-Computes initial housing statistics and returns a ready-to-run ABM.
-
-# Returns
-- "model::ABM": Initialized agent-based model.
+The structure is attached to the agent-based model and is
+used to coordinate simulation-wide processes across timesteps.
 """
-
 mutable struct Properties{df<:Union{DataFrame, GroupedDataFrame{DataFrame}}, t_p<:Int64, f_h<:Dict, a_c<:Dict, r_s<:Dict, a_r<:Dict, b_d<:Dict,
      h_m<:Dict, h_p<:Dict, u_hhs<:DataFrame, no_y<:Int64, f_mat<:ComponentVector, f_dict<:Dict, tick<:Int64}
     df::df
@@ -50,7 +33,62 @@ mutable struct Properties{df<:Union{DataFrame, GroupedDataFrame{DataFrame}}, t_p
     tick::tick
 end
 
+"""
+    Simulator(bg_df, pop_df, f_df, model_evolve;
+              start_year=1981,
+              no_of_years=10,
+              no_hhs_per_agent=10,
+              grouped=false,
+              cutoff_dict=...,
+              pop_growth_perc=0.01,
+              perc_move=0.025,
+              house_choice_mode="simple_avoidance_utility",
+              flood_coefficient=500000,
+              stock_increase_perc=0.05,
+              price_increase_perc=0.05,
+              seed=1500)
 
+Initializes and returns an agent-based model (ABM) for simulating
+household relocation, housing-market dynamics, and flood-risk interactions.
+
+The function:
+- initializes flood hazard histories and flood matrices
+- constructs the spatial model environment
+- creates BlockGroup agents
+- generates household agents and queue agents
+- initializes housing market and relocation parameters
+- computes baseline demographic and housing statistics
+
+The resulting model supports simulation of:
+- flood exposure and memory
+- relocation decision-making
+- housing demand and pricing dynamics
+- population growth and migration
+- levee and flood-protection scenarios
+
+# Arguments
+- `bg_df`: DataFrame containing BlockGroup attributes
+- `pop_df`: DataFrame containing household demographic data
+- `f_df`: DataFrame containing flood-history data
+- `model_evolve`: Function defining timestep evolution logic
+
+# Keywords
+- `start_year=1981`: Initial simulation year
+- `no_of_years=10`: Number of simulation years
+- `no_hhs_per_agent=10`: Number of households represented per agent
+- `grouped=false`: Whether BlockGroups are grouped into categories
+- `cutoff_dict`: Household income-category thresholds
+- `pop_growth_perc=0.01`: Annual population growth rate
+- `perc_move=0.025`: Baseline household relocation probability
+- `house_choice_mode="simple_avoidance_utility"`: Housing-choice strategy
+- `flood_coefficient=500000`: Flood-disamenity scaling coefficient
+- `stock_increase_perc=0.05`: Housing-stock growth rate
+- `price_increase_perc=0.05`: Housing-price adjustment rate
+- `seed=1500`: Random seed used for reproducibility
+
+# Returns
+- `model::ABM`: Fully initialized agent-based simulation model.
+"""
 function Simulator(bg_df, pop_df, f_df, model_evolve; 
     start_year = 1981, no_of_years = 10, no_hhs_per_agent=10, simple_avoidance_perc = 0.95, house_budget_mode = "rhea", hh_budget_perc = 0.33, rhea_coef = 0.63, grouped = false, group_col = "adj_income_2019",
     cutoff_dict = OrderedDict(1=> [0,25000.00], 2=>[25000.00,75000.00], 3=>[75000.00, 1e7]), bg_cat = Dict(:col =>"income_cat", :occ_cat => [1,2,3]), pop_growth_perc = .01, 
@@ -202,24 +240,3 @@ function Simulator(bg_df, pop_df, f_df, model_evolve;
     return model
 end
 
-
-
-
-
-
-
-
-
-#FloodHazard 
-
-#Zoning 
-
-#Landscape Statistics
-
-
-#function model_step!(model::ABM)
-#reset queues and lists
-    #model.unassigned_hhs = DataFrame()
-    #model.relocating_hhs = DataFrame()
-    #model.available_units_list - []
-#end

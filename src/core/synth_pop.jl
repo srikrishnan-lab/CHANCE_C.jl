@@ -1,3 +1,34 @@
+"""
+Computes the utility value of a housing option based on the selected 
+house choice model and property attributes.
+
+This function evaluates different utility formulations depending on 
+"house_choice_mode", including Cobb-Douglas, regression-based (ANOVA), 
+and simplified index models. It incorporates housing characteristics 
+(e.g., size, age, bathrooms), location factors (e.g., distance to CBD 
+or water), and flood risk. If a levee is present, flood-related 
+disutility can be scaled down using the levee effectiveness parameter.
+
+Parameters:
+- row: DataFrameRow containing normalized and raw housing attributes 
+  (e.g., income, square footage, flood risk, distances)
+- house_choice_mode: String specifying which utility model to apply.
+  Options include:
+    * "cobb_douglas_utility"
+    * "simple_flood_utility"
+    * "flood_mem_utility"
+    * "flood_ind_utility"
+    * other fallback regression-based utility
+- levee: Boolean indicating whether a levee is present (default: false)
+- f_e: Float representing levee effectiveness in reducing flood risk (default: 0.0)
+- cd_dict: Dictionary of exponents for Cobb-Douglas utility components 
+  (default: Dict(:a=>0.4, :b=>0.4, :c=>0.2))
+- anova_coef: Vector of coefficients used in regression-based utility models
+- flood_coef: Float representing penalty associated with flood exposure
+
+Returns:
+- util: Float representing the computed utility score for the housing option
+"""
 ### File holds functions to initialize household agents with census demographic data
 ##Function to calculate agent utility 
 function calc_utility(row, house_choice_mode; levee = false, f_e = 0.0,

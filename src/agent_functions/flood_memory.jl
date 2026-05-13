@@ -26,7 +26,6 @@ memory (experienced hazard over time) and inherit the updated utility.
 # Returns
 - Nothing. Mutates the BlockGroup, household agents, and model dataframe in place.
 """
-## Update Flooded Houses
 function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 0.0, flood_coef = 500000, penalty = 50)
     
     year = model.tick
@@ -54,7 +53,7 @@ function flooded!(agent::BlockGroup, model::ABM; mem = 10, levee = false, f_e = 
         bg_df[col, :curr_utility] = agent.current_utility[:,col]
     end
     
-
+    ## Update Flooded Houses
     ## For HHAgents within Blockgroup
     #Collect HHAgent ids within BlockGroup
     hh_ids = collect([hh.id for hh in agents_in_position(agent, model) if hh isa HHAgent])
